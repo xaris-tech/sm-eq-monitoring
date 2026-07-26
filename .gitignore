@@ -1,0 +1,7 @@
+node_modules/
+.env
+server/node_modules/
+nul
+python_server.pid
+ngrok.pid
+ngrok_url.txt

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Comms Checklist - SM Equipment Monitoring</title>
+  <meta name="theme-color" content="#0f172a">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="js/config.js?v=2"></script>
+  <script src="js/api.js?v=2"></script>
+  <style>
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin: var(--space-6) 0 var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1.5px solid var(--border-light);
+    }
+
+    .section-title:first-of-type {
+      margin-top: 0;
+    }
+
+    .checklist-item {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: var(--space-3) var(--space-4);
+      margin-bottom: var(--space-2);
+    }
+
+    .checklist-item-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-3);
+    }
+
+    .checklist-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .checklist-item-name {
+      font-weight: 600;
+      font-size: 0.9375rem;
+    }
+
+    .checklist-item-spec {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .status-group {
+      display: flex;
+      gap: var(--space-1);
+      flex-shrink: 0;
+    }
+
+    .status-btn {
+      padding: 4px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all 0.12s;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .status-btn:hover {
+      border-color: var(--text-muted);
+    }
+
+    .status-btn.selected-complete {
+      background: var(--success-bg);
+      border-color: var(--success);
+      color: #065f46;
+    }
+
+    .status-btn.selected-incomplete {
+      background: var(--danger-bg);
+      border-color: var(--danger);
+      color: #991b1b;
+    }
+
+    .status-btn.selected-na {
+      background: var(--bg);
+      border-color: var(--text-muted);
+      color: var(--text-muted);
+    }
+
+    .checklist-item-notes {
+      margin-top: var(--space-2);
+      display: none;
+    }
+
+    .checklist-item-notes.visible {
+      display: block;
+    }
+
+    .checklist-item-notes input {
+      font-size: 0.8125rem;
+      padding: 6px var(--space-2);
+    }
+
+    .beltpack-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-2);
+    }
+
+    @media (max-width: 380px) {
+      .beltpack-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .beltpack-field {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: var(--space-2) var(--space-3);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .beltpack-label {
+      font-weight: 600;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      min-width: 32px;
+    }
+
+    .beltpack-field input {
+      border: none;
+      padding: 4px 0;
+      font-size: 0.8125rem;
+      width: 100%;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+    }
+
+    .beltpack-field input::placeholder {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .headset-item {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: var(--space-3) var(--space-4);
+      margin-bottom: var(--space-2);
+    }
+
+    .headset-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+
+    .headset-label {
+      font-weight: 600;
+      font-size: 0.8125rem;
+      min-width: 100px;
+    }
+
+    .headset-row select {
+      width: auto;
+      flex: 1;
+      min-width: 120px;
+      font-size: 0.8125rem;
+      padding: 6px var(--space-2);
+    }
+
+    .headset-row input {
+      width: auto;
+      flex: 1;
+      min-width: 100px;
+      font-size: 0.8125rem;
+      padding: 6px var(--space-2);
+    }
+
+    .required-star {
+      color: var(--danger);
+      margin-left: 2px;
+    }
+
+    .radio-group {
+      display: flex;
+      gap: var(--space-3);
+      margin-top: var(--space-1);
+    }
+
+    .radio-label {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      font-size: 0.9375rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .radio-label input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-title">SM Equipment Monitoring</div>
+    <div class="header-sub">Comms Checklist <span class="mock-badge" style="display:none">mock</span></div>
+  </header>
+
+  <main>
+    <div id="errorMsg" class="error-msg" role="alert"></div>
+
+    <!-- Form -->
+    <section id="formSection" class="section active">
+      <h1>Comms Checklist</h1>
+      <p>Verify and log comms equipment for church events and activities.</p>
+
+      <!-- Header Fields -->
+      <div class="field">
+        <label>Full Name <span class="required-star">*</span></label>
+        <input type="text" id="fullName" placeholder="e.g. Juan Dela Cruz" required autocomplete="name">
+      </div>
+
+      <div class="field">
+        <label for="eventSelect">Church Event and Activity <span class="required-star">*</span></label>
+        <select id="eventSelect"></select>
+      </div>
+
+      <div class="field hidden" id="otherEventField">
+        <label for="otherEvent">Please specify event</label>
+        <input type="text" id="otherEvent" placeholder="e.g. Christmas Program">
+      </div>
+
+      <div class="field">
+        <label>SLOT <span class="required-star">*</span></label>
+        <div class="radio-group" id="slotGroup">
+          <label class="radio-label">
+            <input type="radio" name="slot" value="AM" checked> AM
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="slot" value="PM"> PM
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Timestamp</label>
+        <div class="time-display" id="timestampDisplay" aria-live="polite"><i data-lucide="clock"></i> Capturing...</div>
+      </div>
+
+      <!-- Checklist -->
+      <div class="section-title">Equipment Checklist</div>
+      <p style="font-size:0.8125rem;margin-top:calc(var(--space-3)*-1);margin-bottom:var(--space-3)">Tap each item or scan its QR code to mark Complete.</p>
+      <button class="btn btn-primary" id="scanItemBtn" style="margin-bottom:var(--space-3)">
+        <i data-lucide="scan-line"></i> Scan Item QR
+      </button>
+      <div id="checklistContainer"></div>
+
+      <!-- Beltpack Assignment -->
+      <div class="section-title">Beltpack Assignment</div>
+      <p style="font-size:0.8125rem;margin-top:calc(var(--space-3)*-1);margin-bottom:var(--space-3)">Enter assigned username for each beltpack. Leave as N/A if not used.</p>
+      <div class="beltpack-grid" id="beltpackContainer"></div>
+
+      <!-- Headset Assignment -->
+      <div class="section-title">Headset Assignment</div>
+      <p style="font-size:0.8125rem;margin-top:calc(var(--space-3)*-1);margin-bottom:var(--space-3)">Check each headset status and add notes.</p>
+      <div id="headsetContainer"></div>
+
+      <!-- Submit -->
+      <div class="btn-group" style="margin-top:var(--space-6)">
+        <button class="btn btn-success" id="submitBtn">
+          <i data-lucide="check"></i> Submit Checklist
+        </button>
+        <a href="index.html" class="btn btn-ghost" style="text-decoration:none;text-align:center">
+          <i data-lucide="arrow-left"></i> Back to Home
+        </a>
+      </div>
+    </section>
+
+    <!-- Confirmation -->
+    <section id="confirmSection" class="section">
+      <div class="confirm-icon"><i data-lucide="check-circle"></i></div>
+      <h1 id="confirmTitle">Checklist Complete</h1>
+      <p id="confirmMessage">Comms checklist has been recorded.</p>
+      <div id="confirmDetails" class="confirm-details"></div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="newChecklistBtn">
+          <i data-lucide="plus"></i> New Checklist
+        </button>
+        <a href="index.html" class="btn btn-ghost" style="text-decoration:none;text-align:center">
+          <i data-lucide="home"></i> Home
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <!-- Scanner Overlay -->
+  <div id="scannerOverlay" class="scanner-overlay hidden" role="dialog" aria-modal="true" aria-label="QR code scanner">
+    <button class="scanner-close" id="scannerCloseBtn" aria-label="Close scanner"><i data-lucide="x"></i></button>
+    <div id="scanner-container">
+      <div class="scanner-frame">
+        <span class="corner-tl"></span>
+        <span class="corner-tr"></span>
+        <span class="corner-bl"></span>
+        <span class="corner-br"></span>
+        <div class="scanner-line"></div>
+      </div>
+    </div>
+    <div class="scanner-hint">Point camera at a comms item QR code</div>
+  </div>
+
+  <script>lucide.createIcons()</script>
+  <script src="js/comms-checklist.js?v=2"></script>
+</body>
+</html>

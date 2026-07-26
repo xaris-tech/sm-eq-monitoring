@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>SM Equipment Monitoring</title>
+  <meta name="description" content="Borrow equipment, return equipment, and complete comms checklists">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js"></script>
+  <script src="js/config.js"></script>
+  <style>
+    .landing {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100dvh - 80px);
+      padding: var(--space-4);
+    }
+
+    .landing p {
+      text-align: center;
+      max-width: 320px;
+    }
+
+    .landing-cards {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      width: 100%;
+      max-width: 360px;
+      margin-top: var(--space-3);
+    }
+
+    .landing-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-8) var(--space-5);
+      background: var(--surface);
+      border: 1.5px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--text);
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+      text-align: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .landing-card:hover {
+      border-color: var(--steel);
+      box-shadow: var(--shadow);
+    }
+
+    .landing-card:active {
+      transform: scale(0.98);
+    }
+
+    .landing-card-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .landing-card-icon .lucide {
+      width: 28px;
+      height: 28px;
+    }
+
+    .landing-card-icon.borrow {
+      background: var(--navy);
+    }
+
+    .landing-card-icon.borrow .lucide {
+      stroke: white;
+    }
+
+    .landing-card-icon.comms {
+      background: var(--steel);
+    }
+
+    .landing-card-icon.comms .lucide {
+      stroke: white;
+    }
+
+    .landing-card h2 {
+      margin: 0;
+      font-size: 1.125rem;
+    }
+
+    .landing-card p {
+      margin: 0;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+
+    .mock-badge {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.625rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-title">SM Equipment Monitoring</div>
+    <div class="header-sub">Borrow &amp; Return · Comms Checklist <span id="mockBadge" class="mock-badge" style="display:none">mock</span></div>
+  </header>
+
+  <main>
+    <div class="landing">
+      <h1 style="text-align:center;margin-bottom:var(--space-1)">Welcome</h1>
+      <p>Select a module to get started.</p>
+
+      <div class="landing-cards">
+        <a href="borrow.html" class="landing-card">
+          <div class="landing-card-icon borrow">
+            <i data-lucide="scan-line"></i>
+          </div>
+          <h2>Borrowing Equipment</h2>
+          <p>Borrow and return equipment by scanning QR codes</p>
+        </a>
+
+        <a href="comms-checklist.html" class="landing-card">
+          <div class="landing-card-icon comms">
+            <i data-lucide="clipboard-check"></i>
+          </div>
+          <h2>Comms Checklist</h2>
+          <p>Verify comms equipment for church events and activities</p>
+        </a>
+      </div>
+    </div>
+  </main>
+
+    <div class="link-group" style="margin-top:var(--space-8)">
+      <a href="admin.html" class="link-btn" style="font-size:0.75rem;opacity:0.5">
+        <i data-lucide="shield"></i> Admin
+      </a>
+    </div>
+  </main>
+
+  <script>
+    lucide.createIcons()
+
+    if (typeof CONFIG !== 'undefined' && CONFIG.USE_MOCK) {
+      document.getElementById('mockBadge').style.display = 'inline-block'
+    }
+  </script>
+</body>
+</html>
