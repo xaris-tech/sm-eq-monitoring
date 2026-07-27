@@ -203,7 +203,7 @@ function mockSubmitChecklist(payload) {
 }
 
 function mockAdminLogin(password) {
-  if (password === 'admin123') {
+  if (password === '#Isaiah40:3!') {
     const token = crypto.randomUUID()
     mockStore.adminToken = token
     return { success: true, token }

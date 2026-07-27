@@ -1064,6 +1064,28 @@ input:focus {
   }
 }
 
+footer {
+  text-align: center;
+  padding: var(--space-4);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-light);
+  margin-top: var(--space-6);
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.header-logo svg {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+}
+
 @media (min-width: 480px) {
   main {
     padding: var(--space-8) var(--space-4);

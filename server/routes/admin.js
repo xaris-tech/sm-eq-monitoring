@@ -6,7 +6,7 @@ const { requireAdmin } = require('../middleware/adminAuth')
 
 const router = Router()
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '#Isaiah40:3!'
 const EQ_SHEET = 'Equipment'
 const EQ_HEADERS = ['item_id', 'item_name', 'type', 'description', 'stock', 'status']
 const LOG_SHEET = 'BorrowLog'
