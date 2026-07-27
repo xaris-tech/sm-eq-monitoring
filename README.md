@@ -47,7 +47,7 @@ The ngrok URL serves both the pages and the API — no extra setup needed.
 
 ### 5. Generate QR Codes
 
-1. Visit `/admin.html` and log in (default password: `#Isaiah40:3!`)
+1. Visit `/admin.html` and log in with the admin password
 2. Add equipment items (choose Consumable or Non-Consumable type)
 3. Click **Show All QR Codes** and print the sheet
 4. Cut and attach QR codes to equipment
