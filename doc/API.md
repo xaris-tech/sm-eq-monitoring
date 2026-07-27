@@ -306,7 +306,7 @@ Authenticate for admin access.
 
 ```json
 {
-  "password": "admin123"
+  "password": "#Isaiah40:3!"
 }
 ```
 

@@ -5,7 +5,7 @@ const SHEET_COMMS_CHECKLIST = 'CommsChecklist'
 const SHEET_COMMS_EQUIPMENT = 'CommsEquipment'
 const SHEET_SM_KIT = 'SM KIT'
 const SPREADSHEET_ID = '14AUw-o53cyXoCRLmrdkaikMVlQzYyWo-Ad2g6BzHfdA'
-const ADMIN_PASSWORD = 'admin123'  // Change this before deploying.
+const ADMIN_PASSWORD = '#Isaiah40:3!'  // Change this before deploying.
 
 // Equipment columns: 0=item_id, 1=item_name, 2=type, 3=description, 4=stock, 5=status
 const COL_EQ_ID = 0, COL_EQ_NAME = 1, COL_EQ_TYPE = 2, COL_EQ_DESC = 3, COL_EQ_STOCK = 4, COL_EQ_STATUS = 5
