@@ -189,10 +189,6 @@ function collectPayload() {
   const event = document.getElementById('eventSelect').value
   if (!event) { setError('Please select a church event and activity.'); return null }
 
-  const slotEl = document.querySelector('input[name="slot"]:checked')
-  const slot = slotEl ? slotEl.value : ''
-  if (!slot) { setError('Please select a slot (AM/PM).'); return null }
-
   const items = COMMS_ITEMS.map(item => ({
     item_id: item.item_id,
     item_name: item.item_name,
@@ -218,7 +214,6 @@ function collectPayload() {
     name,
     event,
     event_other: event === 'Others' ? document.getElementById('otherEvent').value.trim() : '',
-    slot,
     timestamp: new Date().toISOString(),
     items,
     beltpacks,
@@ -271,7 +266,6 @@ function showConfirm(payload) {
   document.getElementById('confirmDetails').innerHTML = `
     <div><span>Name</span><span>${escapeHtml(payload.name)}</span></div>
     <div><span>Event</span><span>${escapeHtml(payload.event)}${payload.event_other ? ' — ' + escapeHtml(payload.event_other) : ''}</span></div>
-    <div><span>Slot</span><span>${escapeHtml(payload.slot)}</span></div>
     <div><span>Time</span><span>${now}</span></div>
     <div><span>Items Checked</span><span>${itemsOk}</span></div>
     <div><span>Beltpacks Assigned</span><span>${Object.values(payload.beltpacks).filter(v => v !== 'N/A').length}</span></div>
@@ -287,7 +281,6 @@ function resetForm() {
   document.getElementById('eventSelect').value = ''
   document.getElementById('otherEventField').classList.add('hidden')
   document.getElementById('otherEvent').value = ''
-  document.querySelector('input[name="slot"][value="AM"]').checked = true
   COMMS_ITEMS.forEach(item => {
     checklistState[item.item_id] = 'Incomplete'
     const group = document.querySelector(`#checklist-${item.item_id} .status-group`)

@@ -195,7 +195,7 @@ function mockDeleteCommsItem(item_id) {
 function mockSubmitChecklist(payload) {
   mockStore.commsChecklists.push({
     id: crypto.randomUUID(), name: payload.name, event: payload.event,
-    event_other: payload.event_other || '', slot: payload.slot,
+    event_other: payload.event_other || '',
     timestamp: payload.timestamp, items: payload.items,
     beltpacks: payload.beltpacks, headsets: payload.headsets,
   })

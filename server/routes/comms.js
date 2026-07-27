@@ -10,7 +10,7 @@ const CE_HEADERS = ['item_id', 'item_name', 'spec']
 const CE = { ID: 0, NAME: 1, SPEC: 2 }
 
 const CL_SHEET = 'CommsChecklist'
-const CL_HEADERS = ['id', 'name', 'event', 'event_other', 'slot', 'timestamp',
+const CL_HEADERS = ['id', 'name', 'event', 'event_other', 'timestamp',
   'COMMS-BASE-01', 'COMMS-ANTENNA-01', 'COMMS-CABLE-01', 'COMMS-POE-01',
   'COMMS-KNOB-01', 'COMMS-BATT-01', 'COMMS-CHARGER-01', 'COMMS-XLR-01', 'COMMS-CASE-01',
   'SM1_user', 'SM2_user', 'SM3_user', 'SM4_user', 'SM5_user', 'SM6_user', 'SM7_user', 'SM8_user',
@@ -19,9 +19,9 @@ const CL_HEADERS = ['id', 'name', 'event', 'event_other', 'slot', 'timestamp',
 const COMMS_ITEM_IDS = ['COMMS-BASE-01','COMMS-ANTENNA-01','COMMS-CABLE-01','COMMS-POE-01','COMMS-KNOB-01','COMMS-BATT-01','COMMS-CHARGER-01','COMMS-XLR-01','COMMS-CASE-01']
 const BELTPACK_KEYS = ['SM1','SM2','SM3','SM4','SM5','SM6','SM7','SM8']
 
-const CL_ITEM_START = 6
-const CL_BELTPACK_START = 15
-const CL_HEADSET_START = 23
+const CL_ITEM_START = 5
+const CL_BELTPACK_START = 14
+const CL_HEADSET_START = 22
 
 // GET /api/comms
 router.get('/', async (req, res, next) => {
@@ -77,18 +77,17 @@ router.delete('/:item_id', async (req, res, next) => {
 // POST /api/comms/checklist
 router.post('/checklist', async (req, res, next) => {
   try {
-    const { name, event, event_other, slot, timestamp, items, beltpacks, headsets } = req.body
+    const { name, event, event_other, timestamp, items, beltpacks, headsets } = req.body
     if (!name || !name.trim()) throw ApiError(400, 'name is required')
 
     await ensureSheet(CL_SHEET, CL_HEADERS)
 
-    const row = new Array(31).fill('')
+    const row = new Array(30).fill('')
     row[0] = uuidv4()
     row[1] = name.trim()
     row[2] = event || ''
     row[3] = event_other || ''
-    row[4] = slot || ''
-    row[5] = timestamp || new Date().toISOString()
+    row[4] = timestamp || new Date().toISOString()
 
     COMMS_ITEM_IDS.forEach((id, i) => {
       const item = (items || []).find(it => it.item_id === id)
@@ -104,7 +103,7 @@ router.post('/checklist', async (req, res, next) => {
       row[CL_HEADSET_START + i] = (hs.status || 'Working') + ' | ' + (hs.notes || '')
     })
 
-    await appendRows(`'${CL_SHEET}'!A:AE`, [row])
+    await appendRows(`'${CL_SHEET}'!A:AD`, [row])
     res.status(201).json({ success: true })
   } catch (err) {
     next(err)
@@ -114,7 +113,7 @@ router.post('/checklist', async (req, res, next) => {
 // GET /api/comms/checklists
 router.get('/checklists', async (req, res, next) => {
   try {
-    const rows = await getRows(`'${CL_SHEET}'!A:AE`)
+    const rows = await getRows(`'${CL_SHEET}'!A:AD`)
     if (rows.length < 2) return res.json({ checklists: [] })
 
     const checklists = rows.slice(1).filter(r => r[0]).map(r => ({
@@ -122,8 +121,7 @@ router.get('/checklists', async (req, res, next) => {
       name: r[1],
       event: r[2],
       event_other: r[3],
-      slot: r[4],
-      timestamp: r[5],
+      timestamp: r[4],
     }))
 
     res.json({ checklists })
