@@ -78,6 +78,37 @@ router.post('/seed', requireAdmin, async (req, res, next) => {
   }
 })
 
+// POST /api/admin/seed-comms — requires auth
+const CE_SHEET = 'CommsEquipment'
+const CE_HEADERS = ['item_id', 'item_name', 'spec']
+const COMMS_SEED = [
+  ['COMMS-BASE-01', 'Base Station', '1 pc'],
+  ['COMMS-ANTENNA-01', 'Antenna', '2 pcs'],
+  ['COMMS-CABLE-01', 'Cable', '1 pc'],
+  ['COMMS-POE-01', 'POE Adapter', '1 pc'],
+  ['COMMS-KNOB-01', 'Pet Knob with Tripod Adapter', '1 Knob, 1 Adapter'],
+  ['COMMS-BATT-01', 'Beltpack Battery', '16 pcs (8 spares)'],
+  ['COMMS-CHARGER-01', 'Charging Base', '1 pc'],
+  ['COMMS-XLR-01', '4-Pin XLR Adapter', '1 pc'],
+  ['COMMS-CASE-01', 'M1 Hard Case', '1 pc'],
+]
+
+router.post('/seed-comms', requireAdmin, async (req, res, next) => {
+  try {
+    await ensureSheet(CE_SHEET, CE_HEADERS)
+    const existingRows = await getRows(`'${CE_SHEET}'!A:A`)
+    for (let i = existingRows.length; i >= 2; i--) {
+      await deleteRow(CE_SHEET, i)
+    }
+    for (const row of COMMS_SEED) {
+      await appendRows(`'${CE_SHEET}'!A:C`, [row])
+    }
+    res.json({ success: true, count: COMMS_SEED.length })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // GET /api/admin/logs — requires auth
 router.get('/logs', requireAdmin, async (req, res, next) => {
   try {

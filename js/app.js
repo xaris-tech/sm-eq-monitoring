@@ -5,6 +5,7 @@ let html5Scanner = null
 let clockInterval = null
 let borrowBtnHTML = ''
 let returnBtnHTML = ''
+let pendingConsumable = null
 
 function setError(msg) {
 
@@ -102,6 +103,7 @@ function updateSubmitBtn(mode) {
 
 function showScanner(mode) {
   setError(null)
+  cancelQtyPrompt()
   const overlay = document.getElementById('scannerOverlay')
   overlay.classList.remove('hidden')
 
@@ -145,10 +147,12 @@ function handleScan(decodedText, mode) {
     return
   }
 
-  const entry = { ...equipment }
   if (mode === 'borrow' && (equipment.type || '').toLowerCase() === 'consumable') {
-    entry._quantity = 1
+    showQtyPrompt(equipment)
+    return
   }
+
+  const entry = { ...equipment }
   list.push(entry)
   renderEquipmentList(list, mode === 'borrow' ? 'borrowList' : 'returnList', mode)
   updateSubmitBtn(mode)
@@ -159,6 +163,37 @@ function findEquipmentByItemId(item_id) {
     return equipmentCache.find(e => e.item_id === item_id) || null
   }
   return null
+}
+
+function showQtyPrompt(equipment) {
+  pendingConsumable = { ...equipment }
+  document.getElementById('qtyItemName').textContent = equipment.item_name
+  document.getElementById('qtyItemStock').textContent = `Stock: ${equipment.stock || 0}`
+  const input = document.getElementById('qtyInput')
+  input.value = 1
+  input.max = equipment.stock || 999
+  document.getElementById('qtyPromptOverlay').classList.remove('hidden')
+  input.focus()
+  input.select()
+}
+
+function confirmQtyPrompt() {
+  if (!pendingConsumable) return
+  const input = document.getElementById('qtyInput')
+  const qty = parseInt(input.value, 10) || 1
+  const max = parseInt(input.max, 10) || 999
+  const clamped = Math.max(1, Math.min(qty, max))
+  pendingConsumable._quantity = clamped
+  scannedEquipment.push(pendingConsumable)
+  pendingConsumable = null
+  document.getElementById('qtyPromptOverlay').classList.add('hidden')
+  renderEquipmentList(scannedEquipment, 'borrowList', 'borrow')
+  updateSubmitBtn('borrow')
+}
+
+function cancelQtyPrompt() {
+  pendingConsumable = null
+  document.getElementById('qtyPromptOverlay').classList.add('hidden')
 }
 
 let equipmentCache = []
@@ -257,6 +292,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('submitReturnBtn').addEventListener('click', () => {
     submitAction('returnName', returnEquipment, 'return', submitReturn, 'return')
   })
+
+  document.getElementById('qtyDec').addEventListener('click', () => {
+    const input = document.getElementById('qtyInput')
+    const val = parseInt(input.value, 10) || 1
+    if (val > 1) input.value = val - 1
+  })
+
+  document.getElementById('qtyInc').addEventListener('click', () => {
+    const input = document.getElementById('qtyInput')
+    const val = parseInt(input.value, 10) || 1
+    const max = parseInt(input.max, 10) || 999
+    if (val < max) input.value = val + 1
+  })
+
+  document.getElementById('qtyInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') confirmQtyPrompt()
+    if (e.key === 'Escape') cancelQtyPrompt()
+  })
+
+  document.getElementById('qtyConfirm').addEventListener('click', confirmQtyPrompt)
+  document.getElementById('qtyCancel').addEventListener('click', cancelQtyPrompt)
 
   document.getElementById('confirmBackBtn').addEventListener('click', () => {
     scannedEquipment = []

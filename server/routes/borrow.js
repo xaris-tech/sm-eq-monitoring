@@ -31,13 +31,13 @@ router.post('/borrow', async (req, res, next) => {
     const results = []
 
     for (const item of items) {
-      const rowIdx = findEquipmentRow(equipRows, item.item_id)
+      const rowIdx = await findEquipmentRow(equipRows, item.item_id)
       if (rowIdx === -1) throw ApiError(404, `Equipment '${item.item_id}' not found`)
 
       const currentStock = Number(equipRows[rowIdx][EQ.STOCK]) || 0
       const itemType = equipRows[rowIdx][EQ.TYPE] || 'Non-Consumable'
       const itemName = equipRows[rowIdx][EQ.NAME] || item.item_name
-      const qty = itemType === 'Consumable' ? (item.quantity || 1) : 1
+      const qty = itemType === 'Consumable' ? (item.quantity || item._quantity || 1) : 1
 
       if (itemType === 'Consumable') {
         if (qty > currentStock) {
@@ -87,7 +87,7 @@ router.post('/return', async (req, res, next) => {
     const results = []
 
     for (const item of items) {
-      const rowIdx = findEquipmentRow(equipRows, item.item_id)
+      const rowIdx = await findEquipmentRow(equipRows, item.item_id)
       if (rowIdx === -1) throw ApiError(404, `Equipment '${item.item_id}' not found`)
 
       const itemType = equipRows[rowIdx][EQ.TYPE] || 'Non-Consumable'

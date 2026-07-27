@@ -5,3 +5,9 @@ nul
 python_server.pid
 ngrok.pid
 ngrok_url.txt
+
+# Service account credentials
+creds/
+
+# Log files
+*.log

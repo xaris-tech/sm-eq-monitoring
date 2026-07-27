@@ -1,5 +1,5 @@
-require('dotenv').config()
 const path = require('path')
+require('dotenv').config({ path: path.join(__dirname, '.env') })
 const express = require('express')
 const helmet = require('helmet')
 
@@ -8,11 +8,28 @@ const borrowRoutes = require('./routes/borrow')
 const commsRoutes = require('./routes/comms')
 const adminRoutes = require('./routes/admin')
 const { errorHandler } = require('./middleware/errorHandler')
+const { isUsingInMemory, seedDefaults, getSheetsClient } = require('./services/sheets')
 
 const app = express()
 const PORT = process.env.PORT || 3000
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://unpkg.com", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'self'"],
+      formAction: ["'self'"],
+      baseUri: ["'self'"],
+    },
+  },
+}))
 app.use(express.json())
 
 // API routes
@@ -36,8 +53,11 @@ app.get('*', (req, res) => {
 
 app.use(errorHandler)
 
-app.listen(PORT, () => {
-  console.log(`SM Equipment serving frontend + API on port ${PORT}`)
+app.listen(PORT, async () => {
+  await getSheetsClient()
+  seedDefaults()
+  const mode = isUsingInMemory() ? 'in-memory store (no Google Sheets credentials)' : 'Google Sheets'
+  console.log(`SM Equipment serving frontend + API on port ${PORT} [${mode}]`)
 })
 
 module.exports = app

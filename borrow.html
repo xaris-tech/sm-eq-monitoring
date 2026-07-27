@@ -112,6 +112,23 @@
     <div class="scanner-hint">Point camera at a QR code</div>
   </div>
 
+  <!-- Quantity Prompt -->
+  <div id="qtyPromptOverlay" class="qty-overlay hidden" role="dialog" aria-modal="true" aria-label="Enter quantity">
+    <div class="qty-dialog">
+      <h3 id="qtyItemName">Item Name</h3>
+      <p class="qty-stock" id="qtyItemStock">Stock: 0</p>
+      <div class="qty-input-group">
+        <button class="qty-btn" id="qtyDec" aria-label="Decrease quantity">&minus;</button>
+        <input type="number" id="qtyInput" value="1" min="1" max="999">
+        <button class="qty-btn" id="qtyInc" aria-label="Increase quantity">+</button>
+      </div>
+      <div class="qty-actions">
+        <button class="btn btn-secondary" id="qtyCancel">Cancel</button>
+        <button class="btn btn-primary" id="qtyConfirm">Add to List</button>
+      </div>
+    </div>
+  </div>
+
   <script>lucide.createIcons()</script>
   <script src="js/app.js"></script>
 </body>

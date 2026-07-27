@@ -1,5 +1,3 @@
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || null
-
 function requireAdmin(req, res, next) {
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -7,7 +5,8 @@ function requireAdmin(req, res, next) {
   }
 
   const token = authHeader.slice(7)
-  if (ADMIN_TOKEN && token !== ADMIN_TOKEN) {
+  const adminToken = process.env.ADMIN_TOKEN
+  if (adminToken && token !== adminToken) {
     return res.status(401).json({ success: false, error: 'Invalid authorization token' })
   }
 
