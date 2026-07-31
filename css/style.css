@@ -87,7 +87,7 @@ body {
 }
 
 header {
-  background: var(--navy);
+  background: #000;
   color: white;
   padding: var(--space-4) var(--space-4);
   text-align: center;
