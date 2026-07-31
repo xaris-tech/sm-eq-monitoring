@@ -42,22 +42,22 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// Serve static frontend files from project root
-app.use(express.static(path.join(__dirname, '..')))
-
-// Fallback: serve index.html for any non-API, non-file route
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' })
-  res.sendFile(path.join(__dirname, '..', 'index.html'))
-})
-
 app.use(errorHandler)
 
-app.listen(PORT, async () => {
-  await getSheetsClient()
-  seedDefaults()
-  const mode = isUsingInMemory() ? 'in-memory store (no Google Sheets credentials)' : 'Google Sheets'
-  console.log(`SM Equipment serving frontend + API on port ${PORT} [${mode}]`)
-})
+if (!process.env.VERCEL) {
+  app.use(express.static(path.join(__dirname, '..')))
+
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' })
+    res.sendFile(path.join(__dirname, '..', 'index.html'))
+  })
+
+  app.listen(PORT, async () => {
+    await getSheetsClient()
+    seedDefaults()
+    const mode = isUsingInMemory() ? 'in-memory store (no Google Sheets credentials)' : 'Google Sheets'
+    console.log(`SM Equipment serving frontend + API on port ${PORT} [${mode}]`)
+  })
+}
 
 module.exports = app

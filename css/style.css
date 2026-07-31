@@ -1080,10 +1080,13 @@ footer {
   gap: var(--space-3);
 }
 
-.header-logo svg {
+.header-logo svg,
+.header-logo img {
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
+  object-fit: cover;
+  display: block;
 }
 
 @media (min-width: 480px) {

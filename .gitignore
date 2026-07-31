@@ -11,3 +11,8 @@ creds/
 
 # Log files
 *.log
+
+# Vercel
+.vercel
+
+.vercel
