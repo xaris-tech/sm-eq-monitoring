@@ -1082,8 +1082,8 @@ footer {
 
 .header-logo svg,
 .header-logo img {
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-sm);
   object-fit: cover;
   display: block;
