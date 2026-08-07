@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Borrow Equipment - SM Equipment Monitoring</title>
+  <title>SM | Borrow / Return Equipment</title>
   <meta name="description" content="Borrow and return equipment by scanning QR codes">
   <meta name="theme-color" content="#0f172a">
+  <link rel="icon" type="image/png" href="SM-log.png">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -30,7 +31,7 @@
 
     <!-- Borrow -->
     <section id="borrowSection" class="section active" aria-label="Borrow equipment form">
-      <h1>Borrow Equipment</h1>
+      <h1 class="transaction-title">BORROW EQUIPMENT</h1>
       <p>Enter your name and scan equipment QR codes to borrow.</p>
 
       <div class="field">
@@ -43,7 +44,7 @@
         <div class="time-display" id="borrowTime" aria-live="polite"><i data-lucide="clock"></i> Capturing...</div>
       </div>
 
-      <button class="btn btn-primary" id="scanBorrowBtn">
+      <button class="btn btn-primary scan-action" id="scanBorrowBtn">
         <i data-lucide="scan-line"></i> Scan Equipment QR
       </button>
 
@@ -60,7 +61,7 @@
 
     <!-- Return -->
     <section id="returnSection" class="section" aria-label="Return equipment form">
-      <h1>Return Equipment</h1>
+      <h1 class="transaction-title">RETURN EQUIPMENT</h1>
       <p>Enter your name and scan the equipment QR to return it.</p>
 
       <div class="field">
@@ -73,7 +74,7 @@
         <div class="time-display" id="returnTime" aria-live="polite"><i data-lucide="clock"></i> Capturing...</div>
       </div>
 
-      <button class="btn btn-primary" id="scanReturnBtn">
+      <button class="btn btn-primary scan-action" id="scanReturnBtn">
         <i data-lucide="scan-line"></i> Scan Equipment to Return
       </button>
 

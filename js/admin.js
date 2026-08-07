@@ -2,6 +2,18 @@ let equipment = []
 let commsEquipment = []
 let qrInstances = []
 let commsQrInstances = []
+let pageQrsRendered = false
+
+const ADMIN_PAGE_QRS = [
+  {
+    containerId: 'borrowPageQr',
+    url: 'https://wlsm-equipment-monitoring.vercel.app/borrow.html',
+  },
+  {
+    containerId: 'commsChecklistPageQr',
+    url: 'https://wlsm-equipment-monitoring.vercel.app/comms-checklist.html',
+  },
+]
 
 function setError(msg) {
   const el = document.getElementById('errorMsg')
@@ -74,6 +86,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tab.dataset.tab === 'commsTab') {
         loadCommsEquipment()
       }
+      if (tab.dataset.tab === 'pageQrTab') {
+        renderPageQrs()
+      }
     })
   })
 
@@ -94,7 +109,23 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleCommsQrSection()
   })
   document.getElementById('printCommsQrBtn').addEventListener('click', () => window.print())
+  document.getElementById('printPageQrBtn').addEventListener('click', () => window.print())
 })
+
+function renderPageQrs() {
+  if (pageQrsRendered) return
+
+  ADMIN_PAGE_QRS.forEach(page => {
+    const container = document.getElementById(page.containerId)
+    new QRCode(container, {
+      text: page.url,
+      width: 180,
+      height: 180,
+      correctLevel: QRCode.CorrectLevel.H,
+    })
+  })
+  pageQrsRendered = true
+}
 
 async function handleLogin() {
   const pw = document.getElementById('password').value.trim()
@@ -399,6 +430,7 @@ function showCommsQrFor(item_id) {
 function toggleCommsQrSection() {
   const section = document.getElementById('commsQrSection')
   const grid = document.getElementById('commsQrGrid')
+  const assignmentGrid = document.getElementById('assignmentQrGrid')
 
   if (!section.classList.contains('hidden')) {
     section.classList.add('hidden')
@@ -407,6 +439,7 @@ function toggleCommsQrSection() {
 
   section.classList.remove('hidden')
   grid.innerHTML = ''
+  assignmentGrid.innerHTML = ''
   commsQrInstances = []
 
   commsEquipment.forEach(item => {
@@ -423,6 +456,25 @@ function toggleCommsQrSection() {
 
     commsQrInstances.push(new QRCode(qrDiv, { text: item.item_id, width: 128, height: 128 }))
   })
+
+  BELTPACK_IDS.forEach(id => {
+    addAssignmentQr(assignmentGrid, `${id} Beltpack`, `BELTPACK:${id}`)
+    addAssignmentQr(assignmentGrid, `${id} Headset`, `HEADSET:${id}`)
+  })
+}
+
+function addAssignmentQr(grid, labelText, qrValue) {
+  const item = document.createElement('div')
+  item.className = 'qr-item'
+  const qr = document.createElement('div')
+  const label = document.createElement('label')
+  label.textContent = labelText
+  const value = document.createElement('div')
+  value.className = 'meta'
+  value.textContent = qrValue
+  item.append(qr, label, value)
+  grid.appendChild(item)
+  new QRCode(qr, { text: qrValue, width: 128, height: 128, correctLevel: QRCode.CorrectLevel.H })
 }
 
 function toggleQrSection() {

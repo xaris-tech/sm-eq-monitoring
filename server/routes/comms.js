@@ -2,6 +2,7 @@ const { Router } = require('express')
 const { v4: uuidv4 } = require('uuid')
 const { getRows, appendRows, deleteRow, ensureSheet } = require('../services/sheets')
 const { ApiError } = require('../middleware/errorHandler')
+const { serializeBeltpack, serializeHeadset } = require('../services/commsSerialization')
 
 const router = Router()
 
@@ -95,12 +96,11 @@ router.post('/checklist', async (req, res, next) => {
     })
 
     BELTPACK_KEYS.forEach((key, i) => {
-      row[CL_BELTPACK_START + i] = (beltpacks || {})[key] || 'N/A'
+      row[CL_BELTPACK_START + i] = serializeBeltpack((beltpacks || {})[key])
     })
 
     BELTPACK_KEYS.forEach((key, i) => {
-      const hs = (headsets || {})[key] || {}
-      row[CL_HEADSET_START + i] = (hs.status || 'Working') + ' | ' + (hs.notes || '')
+      row[CL_HEADSET_START + i] = serializeHeadset((headsets || {})[key])
     })
 
     await appendRows(`'${CL_SHEET}'!A:AD`, [row])
