@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Admin - SM Equipment Monitoring</title>
+  <title>SM | Admin</title>
   <meta name="description" content="Manage equipment and generate QR codes">
   <meta name="theme-color" content="#0f172a">
+  <link rel="icon" type="image/png" href="SM-log.png">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js"></script>
   <script src="https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -60,6 +61,7 @@
       <div class="admin-tabs no-print">
         <button class="admin-tab active" data-tab="equipmentTab">Equipment</button>
         <button class="admin-tab" data-tab="commsTab">Comms Items</button>
+        <button class="admin-tab" data-tab="pageQrTab">Page QR Codes</button>
       </div>
 
       <!-- Equipment Tab -->
@@ -178,10 +180,51 @@
 
         <div id="commsQrSection" class="hidden">
           <hr style="border:none;border-top:1px solid var(--border-light);margin:var(--space-5) 0">
-          <h2>Comms QR Codes for Printing</h2>
+          <h2>Comms Item QR Codes</h2>
           <p>Cut and attach these to each comms item.</p>
           <div id="commsQrGrid" class="qr-grid"></div>
+
+          <hr style="border:none;border-top:1px solid var(--border-light);margin:var(--space-5) 0">
+          <h2>Beltpack &amp; Headset QR Codes</h2>
+          <p>Attach each code to its matching SM1-SM8 device.</p>
+          <div id="assignmentQrGrid" class="qr-grid"></div>
         </div>
+      </div>
+
+      <!-- Page QR Codes Tab -->
+      <div id="pageQrTab" class="tab-content">
+        <div class="admin-header">
+          <div>
+            <h1>Page QR Codes</h1>
+            <p class="page-qr-intro">Print these codes so volunteers can open each workflow directly.</p>
+          </div>
+          <button class="btn btn-outline btn-sm no-print" id="printPageQrBtn">
+            <i data-lucide="printer"></i> Print
+          </button>
+        </div>
+
+        <div class="page-qr-grid">
+          <article class="page-qr-card">
+            <div id="borrowPageQr" class="page-qr-code" aria-label="QR code for the Borrow and Return Equipment page"></div>
+            <div class="page-qr-copy">
+              <span class="page-qr-kicker">Equipment workflow</span>
+              <h2>BORROW / RETURN Equipment</h2>
+              <p>Scan to borrow or return equipment.</p>
+              <a href="https://wlsm-equipment-monitoring.vercel.app/borrow.html" target="_blank" rel="noopener" class="page-qr-link">Open Borrow / Return page</a>
+            </div>
+          </article>
+
+          <article class="page-qr-card">
+            <div id="commsChecklistPageQr" class="page-qr-code" aria-label="QR code for the Comms Checklist page"></div>
+            <div class="page-qr-copy">
+              <span class="page-qr-kicker">Comms workflow</span>
+              <h2>Comms Checklist</h2>
+              <p>Scan to complete the event checklist.</p>
+              <a href="https://wlsm-equipment-monitoring.vercel.app/comms-checklist.html" target="_blank" rel="noopener" class="page-qr-link">Open Comms Checklist page</a>
+            </div>
+          </article>
+        </div>
+
       </div>
 
       <div class="link-group no-print">

@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>SM Equipment Monitoring</title>
+  <title>SM | Home</title>
   <meta name="description" content="Borrow equipment, return equipment, and complete comms checklists">
   <meta name="theme-color" content="#0f172a">
+  <link rel="icon" type="image/png" href="SM-log.png">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js"></script>
   <script src="js/config.js"></script>
@@ -94,6 +95,25 @@
       font-size: 1.125rem;
     }
 
+    .landing-card.primary-module {
+      border: 2px solid var(--navy);
+      box-shadow: var(--shadow);
+    }
+
+    .landing-card .borrow-return-title {
+      font-size: 1.5rem;
+      line-height: 1.15;
+      letter-spacing: 0.02em;
+    }
+
+    .borrow-return-title span {
+      display: block;
+      margin-top: var(--space-1);
+      font-size: 1.125rem;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
     .landing-card p {
       margin: 0;
       font-size: 0.8125rem;
@@ -132,11 +152,11 @@
       <p>Select a module to get started.</p>
 
       <div class="landing-cards">
-        <a href="borrow.html" class="landing-card">
+        <a href="borrow.html" class="landing-card primary-module">
           <div class="landing-card-icon borrow">
             <i data-lucide="scan-line"></i>
           </div>
-          <h2>Borrowing Equipment</h2>
+          <h2 class="borrow-return-title">Borrow / Return <span>Equipment</span></h2>
           <p>Borrow and return equipment by scanning QR codes</p>
         </a>
 

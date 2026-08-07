@@ -6,7 +6,11 @@ function requireAdmin(req, res, next) {
 
   const token = authHeader.slice(7)
   const adminToken = process.env.ADMIN_TOKEN
-  if (adminToken && token !== adminToken) {
+  if (!adminToken) {
+    return res.status(503).json({ success: false, error: 'Admin authentication is not configured' })
+  }
+
+  if (token !== adminToken) {
     return res.status(401).json({ success: false, error: 'Invalid authorization token' })
   }
 

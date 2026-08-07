@@ -6,7 +6,7 @@ const { requireAdmin } = require('../middleware/adminAuth')
 
 const router = Router()
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '#Isaiah40:3!'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
 const EQ_SHEET = 'Equipment'
 const EQ_HEADERS = ['item_id', 'item_name', 'type', 'description', 'stock', 'status']
 const LOG_SHEET = 'BorrowLog'
@@ -46,6 +46,10 @@ const SEED_DATA = [
 
 // POST /api/admin/login
 router.post('/login', (req, res) => {
+  if (!ADMIN_PASSWORD) {
+    return res.status(503).json({ success: false, error: 'Admin authentication is not configured' })
+  }
+
   const { password } = req.body
   if (!password || password !== ADMIN_PASSWORD) {
     return res.status(401).json({ success: false, error: 'Incorrect password' })
