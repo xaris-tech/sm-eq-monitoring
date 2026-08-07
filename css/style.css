@@ -247,6 +247,30 @@ input:focus {
   outline-color: var(--navy-light);
 }
 
+.transaction-title,
+.workflow-title {
+  max-width: 420px;
+  margin-bottom: var(--space-2);
+  font-size: clamp(1.75rem, 7vw, 2.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.scan-action {
+  min-height: 88px;
+  margin-block: var(--space-2) var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  font-size: 1.25rem;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
+
+.scan-action .lucide {
+  width: 32px;
+  height: 32px;
+  stroke-width: 2;
+}
+
 .btn-success {
   background: var(--success);
   color: white;
@@ -801,6 +825,69 @@ input:focus {
   text-transform: none;
   letter-spacing: normal;
   font-weight: 400;
+}
+
+.page-qr-intro {
+  margin: var(--space-1) 0 0;
+}
+
+.page-qr-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.page-qr-card {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.page-qr-code {
+  display: flex;
+  min-width: 180px;
+  min-height: 180px;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-qr-code img,
+.page-qr-code canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+.page-qr-copy h2 {
+  margin: var(--space-1) 0;
+}
+
+.page-qr-copy p {
+  margin-bottom: var(--space-2);
+}
+
+.page-qr-kicker {
+  color: var(--steel);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-qr-link {
+  color: var(--steel);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+@media (min-width: 720px) {
+  .page-qr-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .error-msg {
