@@ -16,3 +16,4 @@ creds/
 .vercel
 
 .vercel
+.env*
