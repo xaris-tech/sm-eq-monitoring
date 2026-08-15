@@ -12,6 +12,7 @@
   <script src="js/config.js?v=2"></script>
   <script src="js/api.js?v=2"></script>
   <script src="js/comms-assignment.js?v=1"></script>
+  <script src="js/comms-scanner-state.js?v=1"></script>
   <style>
     .section-title {
       font-size: 0.75rem;
@@ -345,7 +346,12 @@
 
   <!-- Scanner Overlay -->
   <div id="scannerOverlay" class="scanner-overlay hidden" role="dialog" aria-modal="true" aria-label="QR code scanner">
-    <button class="scanner-close" id="scannerCloseBtn" aria-label="Close scanner"><i data-lucide="x"></i></button>
+    <div class="scanner-toolbar">
+      <button class="scanner-exit" id="scannerExitBtn">
+        <i data-lucide="x"></i> Exit
+      </button>
+      <span class="scanner-mode">Continuous scanning</span>
+    </div>
     <div id="scanner-container">
       <div class="scanner-frame">
         <span class="corner-tl"></span>
@@ -355,7 +361,22 @@
         <div class="scanner-line"></div>
       </div>
     </div>
-    <div class="scanner-hint">Point camera at a comms item QR code</div>
+    <div class="scanner-session-panel">
+      <div id="scannerHistoryStatus" class="scanner-history-status" aria-live="polite">
+        <span class="scanner-history-kicker">Previously scanned</span>
+        <strong id="scannerHistoryLabel">No successful scans yet</strong>
+        <span id="scannerHistoryMeta">Ready for any Comms QR</span>
+      </div>
+      <div class="scanner-history-nav" aria-label="Scan history navigation">
+        <button id="scannerPreviousBtn" class="scanner-nav-btn" disabled>
+          <i data-lucide="chevron-left"></i> Previous
+        </button>
+        <button id="scannerNextBtn" class="scanner-nav-btn" disabled>
+          Next <i data-lucide="chevron-right"></i>
+        </button>
+      </div>
+      <div id="scannerHint" class="scanner-hint">Point camera at any Comms QR code</div>
+    </div>
   </div>
 
   <!-- Scanned Assignment Prompt -->

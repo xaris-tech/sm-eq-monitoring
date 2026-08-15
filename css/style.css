@@ -486,6 +486,106 @@ input:focus {
   font-size: 0.8125rem;
 }
 
+.scanner-session-panel .scanner-hint {
+  padding: 0;
+}
+
+.scanner-hint.is-error {
+  color: #fecaca;
+  font-weight: 600;
+}
+
+.scanner-toolbar {
+  position: absolute;
+  top: max(var(--space-3), env(safe-area-inset-top));
+  left: var(--space-3);
+  right: var(--space-3);
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.scanner-exit,
+.scanner-nav-btn {
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: var(--radius);
+  background: rgba(15, 23, 42, 0.82);
+  color: white;
+  font: 600 0.8125rem var(--font-sans);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.scanner-exit {
+  padding: 0 var(--space-3);
+}
+
+.scanner-mode {
+  padding: 6px var(--space-3);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.scanner-session-panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
+  background: #0f172a;
+}
+
+.scanner-history-status {
+  display: grid;
+  gap: 2px;
+  min-height: 70px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.scanner-history-kicker {
+  color: #86efac;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#scannerHistoryLabel {
+  font-size: 1rem;
+}
+
+#scannerHistoryMeta {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+}
+
+.scanner-history-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.scanner-nav-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.scanner-nav-btn:not(:disabled):hover,
+.scanner-exit:hover {
+  background: rgba(51, 65, 85, 0.95);
+}
+
 .equipment-list {
   margin: var(--space-4) 0;
   display: flex;

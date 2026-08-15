@@ -1,8 +1,11 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
 
 const {
   createScanHistory,
+  isRapidDuplicate,
   recordSuccessfulScan,
   moveScanHistory,
 } = require('../js/comms-scanner-state')
@@ -28,6 +31,8 @@ test('rapid duplicate camera reads are ignored', () => {
 
   assert.equal(duplicate.accepted, false)
   assert.equal(duplicate.history.entries.length, 1)
+  assert.equal(isRapidDuplicate(history, 'COMMS-BASE-01', 1800), true)
+  assert.equal(isRapidDuplicate(history, 'COMMS-BASE-01', 3001), false)
 })
 
 test('the same QR can be recorded again after the duplicate cooldown', () => {
@@ -57,4 +62,36 @@ test('previous and next navigate scan history without moving past its bounds', (
   assert.equal(history.cursor, 1)
   history = moveScanHistory(history, 1)
   assert.equal(history.cursor, 1)
+})
+
+test('Comms scanner exposes continuous controls and scan-history feedback', () => {
+  const root = path.resolve(__dirname, '..')
+  const html = fs.readFileSync(path.join(root, 'comms-checklist.html'), 'utf8')
+
+  assert.match(html, /js\/comms-scanner-state\.js/)
+  assert.match(html, /id="scannerExitBtn"/)
+  assert.match(html, /id="scannerPreviousBtn"/)
+  assert.match(html, /id="scannerNextBtn"/)
+  assert.match(html, /id="scannerHistoryStatus"[^>]*aria-live="polite"/)
+})
+
+test('scan routing keeps the camera session alive and resumes after assignment prompts', () => {
+  const root = path.resolve(__dirname, '..')
+  const script = fs.readFileSync(path.join(root, 'js/comms-checklist.js'), 'utf8')
+  const handleScanBody = script.match(/function handleScan\(decodedText\) \{([\s\S]*?)\n\}/)?.[1] ?? ''
+
+  assert.doesNotMatch(handleScanBody, /hideScanner\(/)
+  assert.match(handleScanBody, /if \(scanProcessing\) return/)
+  assert.match(handleScanBody, /pauseScanner\(/)
+  assert.match(script, /resumeScanner\(/)
+  assert.match(script, /recordCompletedScan\(/)
+})
+
+test('Exit still closes the overlay when the camera never started', () => {
+  const root = path.resolve(__dirname, '..')
+  const script = fs.readFileSync(path.join(root, 'js/comms-checklist.js'), 'utf8')
+  const hideScannerBody = script.match(/function hideScanner\(\) \{([\s\S]*?)\n\}/)?.[1] ?? ''
+
+  assert.match(hideScannerBody, /try \{[\s\S]*scannerToStop\.stop\(\)/)
+  assert.match(hideScannerBody, /scannerOverlay[^\n]*classList\.add\('hidden'\)/)
 })

@@ -2,6 +2,11 @@ let clockInterval = null
 let checklistState = {}
 let html5Scanner = null
 let pendingAssignment = null
+let pendingScanEntry = null
+let scannerPaused = false
+let scanProcessing = false
+let scannerResumeTimer = null
+let scanHistory = CommsScannerState.createScanHistory()
 
 const beltpackAssignments = {}
 const headsetAssignments = {}
@@ -20,6 +25,9 @@ function showScanner() {
   setError(null)
   const overlay = document.getElementById('scannerOverlay')
   overlay.classList.remove('hidden')
+  scanProcessing = false
+  renderScanHistory()
+  setScannerMessage('Point camera at any Comms QR code')
 
   if (html5Scanner) html5Scanner.clear()
 
@@ -29,43 +37,144 @@ function showScanner() {
     { fps: 10, qrbox: { width: 250, height: 250 } },
     (decodedText) => handleScan(decodedText),
     () => {}
-  )
+  ).catch(() => {
+    setScannerMessage('Camera could not start. Check camera permission and try again.', true)
+  })
 }
 
 function hideScanner() {
+  if (scannerResumeTimer) clearTimeout(scannerResumeTimer)
+  scannerResumeTimer = null
   if (html5Scanner) {
-    html5Scanner.stop().then(() => { html5Scanner.clear(); html5Scanner = null }).catch(() => {})
+    const scannerToStop = html5Scanner
+    html5Scanner = null
+    try {
+      Promise.resolve(scannerToStop.stop())
+        .catch(() => {})
+        .finally(() => {
+          try { scannerToStop.clear() } catch (_) {}
+        })
+    } catch (_) {
+      try { scannerToStop.clear() } catch (_) {}
+    }
   }
+  scannerPaused = false
+  scanProcessing = false
   document.getElementById('scannerOverlay').classList.add('hidden')
 }
 
 function handleScan(decodedText) {
-  hideScanner()
+  if (scanProcessing) return
+  scanProcessing = true
 
-  const assignment = CommsAssignment.parseAssignmentQr(decodedText)
+  const value = decodedText.trim()
+  const assignment = CommsAssignment.parseAssignmentQr(value)
+  const scanValue = assignment ? value.toUpperCase() : value
+
+  if (CommsScannerState.isRapidDuplicate(scanHistory, scanValue, Date.now())) {
+    pauseScanner()
+    setScannerMessage('Already scanned. Ready for a different QR.')
+    resumeScanner(700)
+    return
+  }
+
   if (assignment) {
-    showAssignmentPrompt(assignment)
+    pauseScanner()
+    pendingScanEntry = {
+      value: scanValue,
+      label: `${assignment.id} ${assignment.kind === 'beltpack' ? 'Beltpack' : 'Headset'}`,
+    }
+    if (!showAssignmentPrompt(assignment)) {
+      pendingScanEntry = null
+      resumeScanner(900)
+    }
     return
   }
 
-  const item = findCommsItem(decodedText.trim())
+  const item = findCommsItem(value)
   if (!item) {
-    setError(`Unknown comms item: ${decodedText.trim()}`)
+    pauseScanner()
+    setScannerMessage(`Unknown QR: ${value}`, true)
+    resumeScanner(1200)
     return
   }
 
+  pauseScanner()
   const completeBtn = document.querySelector(`#checklist-${item.item_id} .status-btn[data-value="Complete"]`)
   if (completeBtn) {
     completeBtn.click()
+    recordCompletedScan({ value: item.item_id, label: item.item_name })
     setError(null)
+    setScannerMessage('Item marked Complete. Ready for the next QR.')
   }
+  resumeScanner(700)
+}
+
+function pauseScanner() {
+  if (!html5Scanner || scannerPaused) return
+  try {
+    html5Scanner.pause(true)
+    scannerPaused = true
+  } catch (_) {}
+}
+
+function resumeScanner(delay = 0) {
+  if (scannerResumeTimer) clearTimeout(scannerResumeTimer)
+  scannerResumeTimer = setTimeout(() => {
+    scannerResumeTimer = null
+    if (!html5Scanner || document.getElementById('scannerOverlay').classList.contains('hidden')) return
+    try {
+      html5Scanner.resume()
+      scannerPaused = false
+    } catch (_) {}
+    scanProcessing = false
+  }, delay)
+}
+
+function setScannerMessage(message, isError = false) {
+  const hint = document.getElementById('scannerHint')
+  hint.textContent = message
+  hint.classList.toggle('is-error', isError)
+}
+
+function recordCompletedScan(entry) {
+  const result = CommsScannerState.recordSuccessfulScan(scanHistory, entry, Date.now())
+  scanHistory = result.history
+  renderScanHistory()
+  return result.accepted
+}
+
+function renderScanHistory() {
+  const entry = scanHistory.entries[scanHistory.cursor]
+  const label = document.getElementById('scannerHistoryLabel')
+  const meta = document.getElementById('scannerHistoryMeta')
+  const previous = document.getElementById('scannerPreviousBtn')
+  const next = document.getElementById('scannerNextBtn')
+
+  if (!entry) {
+    label.textContent = 'No successful scans yet'
+    meta.textContent = 'Ready for any Comms QR'
+    previous.disabled = true
+    next.disabled = true
+    return
+  }
+
+  label.textContent = entry.label
+  meta.textContent = `${scanHistory.cursor + 1} of ${scanHistory.entries.length} successful scans`
+  previous.disabled = scanHistory.cursor <= 0
+  next.disabled = scanHistory.cursor >= scanHistory.entries.length - 1
+}
+
+function navigateScanHistory(direction) {
+  scanHistory = CommsScannerState.moveScanHistory(scanHistory, direction)
+  renderScanHistory()
 }
 
 function showAssignmentPrompt(assignment) {
   if (assignment.kind === 'headset' && CommsAssignment.isHeadsetDisabled(beltpackAssignments[assignment.id])) {
     setError(`${assignment.id} Headset is not used because ${assignment.id} Beltpack is assigned to In-ear.`)
-    document.getElementById(`headset-${assignment.id}`).scrollIntoView({ behavior: 'smooth', block: 'center' })
-    return
+    setScannerMessage(`${assignment.id} Headset is disabled because its beltpack uses In-ear.`, true)
+    return false
   }
 
   pendingAssignment = assignment
@@ -83,11 +192,15 @@ function showAssignmentPrompt(assignment) {
   document.getElementById('assignmentError').classList.remove('visible')
   document.getElementById('assignmentOverlay').classList.remove('hidden')
   document.getElementById('assignmentName').focus()
+  return true
 }
 
 function closeAssignmentPrompt() {
   pendingAssignment = null
+  pendingScanEntry = null
   document.getElementById('assignmentOverlay').classList.add('hidden')
+  setScannerMessage('Assignment cancelled. Ready for the next QR.')
+  resumeScanner(300)
 }
 
 function confirmAssignmentPrompt() {
@@ -108,7 +221,13 @@ function confirmAssignmentPrompt() {
       document.getElementById(`headset-user-${pendingAssignment.id}`).value = assignment.user
       document.getElementById(`headset-status-${pendingAssignment.id}`).value = assignment.status
     }
-    closeAssignmentPrompt()
+    const completedScan = pendingScanEntry
+    pendingAssignment = null
+    pendingScanEntry = null
+    document.getElementById('assignmentOverlay').classList.add('hidden')
+    if (completedScan) recordCompletedScan(completedScan)
+    setScannerMessage('Assignment saved. Ready for the next QR.')
+    resumeScanner(300)
     setError(null)
   } catch (e) {
     error.textContent = e.message
@@ -423,6 +542,8 @@ function resetForm() {
   })
 
   setError(null)
+  scanHistory = CommsScannerState.createScanHistory()
+  renderScanHistory()
   const btn = document.getElementById('submitBtn')
   btn.innerHTML = '<i data-lucide="check"></i> Submit Checklist'
   btn.disabled = false
@@ -441,7 +562,9 @@ document.addEventListener('DOMContentLoaded', () => {
   buildHeadsets()
 
   document.getElementById('scanItemBtn').addEventListener('click', showScanner)
-  document.getElementById('scannerCloseBtn').addEventListener('click', hideScanner)
+  document.getElementById('scannerExitBtn').addEventListener('click', hideScanner)
+  document.getElementById('scannerPreviousBtn').addEventListener('click', () => navigateScanHistory(-1))
+  document.getElementById('scannerNextBtn').addEventListener('click', () => navigateScanHistory(1))
   document.getElementById('assignmentCancelBtn').addEventListener('click', closeAssignmentPrompt)
   document.getElementById('assignmentConfirmBtn').addEventListener('click', confirmAssignmentPrompt)
   document.getElementById('assignmentName').addEventListener('keydown', e => {

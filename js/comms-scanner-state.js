@@ -9,11 +9,12 @@
     return { entries: [], cursor: -1, lastValue: '', lastAcceptedAt: 0 }
   }
 
-  function recordSuccessfulScan(history, entry, acceptedAt) {
-    const isRapidDuplicate = entry.value === history.lastValue &&
-      acceptedAt - history.lastAcceptedAt < DUPLICATE_COOLDOWN_MS
+  function isRapidDuplicate(history, value, scannedAt) {
+    return value === history.lastValue && scannedAt - history.lastAcceptedAt < DUPLICATE_COOLDOWN_MS
+  }
 
-    if (isRapidDuplicate) return { accepted: false, history }
+  function recordSuccessfulScan(history, entry, acceptedAt) {
+    if (isRapidDuplicate(history, entry.value, acceptedAt)) return { accepted: false, history }
 
     const entries = [...history.entries, { ...entry, acceptedAt }]
     return {
@@ -33,5 +34,5 @@
     return { ...history, cursor }
   }
 
-  return { createScanHistory, recordSuccessfulScan, moveScanHistory }
+  return { createScanHistory, isRapidDuplicate, recordSuccessfulScan, moveScanHistory }
 })
