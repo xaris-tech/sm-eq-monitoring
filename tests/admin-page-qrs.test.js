@@ -53,7 +53,10 @@ test('Borrow and Return scanning is the dominant action', () => {
 
 test('Comms Checklist uses the same prominent heading and scan action', () => {
   const html = read('comms-checklist.html')
+  const css = read('css/style.css')
 
   assert.match(html, /<h1 class="workflow-title">COMMS CHECKLIST<\/h1>/)
   assert.match(html, /class="btn btn-primary scan-action" id="scanItemBtn"/)
+  assert.match(css, /@media \(max-width:\s*640px\)\s*\{[\s\S]*#scanItemBtn\.scan-action\s*\{[^}]*min-height:\s*128px/s)
+  assert.match(css, /#scanItemBtn\.scan-action \.lucide\s*\{[^}]*width:\s*40px/s)
 })
