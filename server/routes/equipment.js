@@ -1,6 +1,7 @@
 const { Router } = require('express')
 const { getRows, appendRows, deleteRow, updateCell, ensureSheet } = require('../services/sheets')
 const { ApiError } = require('../middleware/errorHandler')
+const { parseStockQuantity } = require('../lib/stock')
 
 const router = Router()
 
@@ -20,7 +21,7 @@ router.get('/', async (req, res, next) => {
         item_name: r[COL.NAME],
         type: r[COL.TYPE] || '',
         description: r[COL.DESC] || '',
-        stock: Number(r[COL.STOCK]) || 0,
+        stock: parseStockQuantity(r[COL.STOCK]),
         status: r[COL.STATUS] || 'available',
       }))
 
@@ -73,7 +74,7 @@ router.patch('/:item_id/restock', async (req, res, next) => {
     const idx = rows.findIndex(r => r[COL.ID] === req.params.item_id)
     if (idx === -1) throw ApiError(404, 'Equipment not found')
 
-    const currentStock = Number(rows[idx][COL.STOCK]) || 0
+    const currentStock = parseStockQuantity(rows[idx][COL.STOCK])
     const newStock = currentStock + quantity
 
     await updateCell(`'${SHEET}'!E${idx + 1}`, newStock)

@@ -2,6 +2,7 @@ const { Router } = require('express')
 const { v4: uuidv4 } = require('uuid')
 const { getRows, appendRows, updateCell, ensureSheet } = require('../services/sheets')
 const { ApiError } = require('../middleware/errorHandler')
+const { parseStockQuantity } = require('../lib/stock')
 
 const router = Router()
 
@@ -34,7 +35,7 @@ router.post('/borrow', async (req, res, next) => {
       const rowIdx = await findEquipmentRow(equipRows, item.item_id)
       if (rowIdx === -1) throw ApiError(404, `Equipment '${item.item_id}' not found`)
 
-      const currentStock = Number(equipRows[rowIdx][EQ.STOCK]) || 0
+      const currentStock = parseStockQuantity(equipRows[rowIdx][EQ.STOCK])
       const itemType = equipRows[rowIdx][EQ.TYPE] || 'Non-Consumable'
       const itemName = equipRows[rowIdx][EQ.NAME] || item.item_name
       const qty = itemType === 'Consumable' ? (item.quantity || item._quantity || 1) : 1
