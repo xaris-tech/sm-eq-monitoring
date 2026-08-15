@@ -87,6 +87,17 @@ test('scan routing keeps the camera session alive and resumes after assignment p
   assert.match(script, /recordCompletedScan\(/)
 })
 
+test('successful Comms scans provide sound, vibration, and a brief pause', () => {
+  const root = path.resolve(__dirname, '..')
+  const script = fs.readFileSync(path.join(root, 'js/comms-checklist.js'), 'utf8')
+
+  assert.match(script, /function playScanSuccessFeedback\(\)/)
+  assert.match(script, /AudioContext/)
+  assert.match(script, /oscillator\.start\(\)/)
+  assert.match(script, /navigator\.vibrate\(/)
+  assert.match(script, /resumeScanner\(1000\)/)
+})
+
 test('Exit still closes the overlay when the camera never started', () => {
   const root = path.resolve(__dirname, '..')
   const script = fs.readFileSync(path.join(root, 'js/comms-checklist.js'), 'utf8')

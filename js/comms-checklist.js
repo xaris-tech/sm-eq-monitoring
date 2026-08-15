@@ -7,6 +7,7 @@ let scannerPaused = false
 let scanProcessing = false
 let scannerResumeTimer = null
 let scanHistory = CommsScannerState.createScanHistory()
+let scanAudioContext = null
 
 const beltpackAssignments = {}
 const headsetAssignments = {}
@@ -23,6 +24,7 @@ function findCommsItem(itemId) {
 
 function showScanner() {
   setError(null)
+  prepareScanAudio()
   const overlay = document.getElementById('scannerOverlay')
   overlay.classList.remove('hidden')
   scanProcessing = false
@@ -84,7 +86,9 @@ function handleScan(decodedText) {
       value: scanValue,
       label: `${assignment.id} ${assignment.kind === 'beltpack' ? 'Beltpack' : 'Headset'}`,
     }
-    if (!showAssignmentPrompt(assignment)) {
+    if (showAssignmentPrompt(assignment)) {
+      playScanSuccessFeedback()
+    } else {
       pendingScanEntry = null
       resumeScanner(900)
     }
@@ -104,10 +108,55 @@ function handleScan(decodedText) {
   if (completeBtn) {
     completeBtn.click()
     recordCompletedScan({ value: item.item_id, label: item.item_name })
+    playScanSuccessFeedback()
     setError(null)
     setScannerMessage('Item marked Complete. Ready for the next QR.')
   }
-  resumeScanner(700)
+  resumeScanner(1000)
+}
+
+function playScanSuccessFeedback() {
+  if (navigator.vibrate) navigator.vibrate(120)
+
+  prepareScanAudio()
+  const audioContext = scanAudioContext
+  if (!audioContext) return
+
+  try {
+    const playTone = () => {
+      const oscillator = audioContext.createOscillator()
+      const gain = audioContext.createGain()
+      const now = audioContext.currentTime
+
+      oscillator.type = 'sine'
+      oscillator.frequency.setValueAtTime(880, now)
+      gain.gain.setValueAtTime(0.0001, now)
+      gain.gain.exponentialRampToValueAtTime(0.3, now + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14)
+      oscillator.connect(gain)
+      gain.connect(audioContext.destination)
+      oscillator.start()
+      oscillator.stop(now + 0.15)
+    }
+
+    if (audioContext.state === 'suspended') {
+      audioContext.resume().then(playTone).catch(() => {})
+    } else {
+      playTone()
+    }
+  } catch (_) {}
+}
+
+function prepareScanAudio() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext
+  if (!AudioContext) return
+
+  try {
+    if (!scanAudioContext || scanAudioContext.state === 'closed') {
+      scanAudioContext = new AudioContext()
+    }
+    if (scanAudioContext.state === 'suspended') scanAudioContext.resume().catch(() => {})
+  } catch (_) {}
 }
 
 function pauseScanner() {
