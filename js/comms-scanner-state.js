@@ -1,9 +1,47 @@
 (function (root, factory) {
-  const api = factory()
+  const api = factory(root.CommsAssignment || (typeof require === 'function' ? require('./comms-assignment') : null))
   if (typeof module === 'object' && module.exports) module.exports = api
   root.CommsScannerState = api
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (CommsAssignment) {
   const DUPLICATE_COOLDOWN_MS = 2000
+  // A code must leave the camera's view this long before its notice repeats.
+  const NOTICE_REPEAT_MS = 3000
+
+  // Decides what a scan means against the current form state (see CommsFormState).
+  function classifyScan(rawValue, formState) {
+    const value = String(rawValue || '').trim()
+    const assignment = CommsAssignment.parseAssignmentQr(value)
+
+    if (assignment) {
+      const beltpack = formState.beltpacks[assignment.id]
+      if (assignment.kind === 'beltpack') {
+        return beltpack.user.trim()
+          ? { kind: 'already-assigned', value: value.toUpperCase(), assignment, current: beltpack }
+          : { kind: 'assign', value: value.toUpperCase(), assignment }
+      }
+      if (CommsAssignment.isHeadsetDisabled(beltpack)) {
+        return { kind: 'blocked', value: value.toUpperCase(), assignment }
+      }
+      const headset = formState.headsets[assignment.id]
+      return headset.user.trim()
+        ? { kind: 'already-assigned', value: value.toUpperCase(), assignment, current: headset }
+        : { kind: 'assign', value: value.toUpperCase(), assignment }
+    }
+
+    const item = formState.items[value]
+    if (!item) return { kind: 'unknown', value }
+    return { kind: item.status === 'Complete' ? 'already-complete' : 'complete', value, itemId: value }
+  }
+
+  function createNoticeState() {
+    return { value: '', seenAt: 0 }
+  }
+
+  // Every read of a code refreshes seenAt, so a code held in view stays quiet.
+  function shouldAnnounce(noticeState, value, now) {
+    const repeat = value === noticeState.value && now - noticeState.seenAt < NOTICE_REPEAT_MS
+    return { announce: !repeat, noticeState: { value, seenAt: now } }
+  }
 
   function createScanHistory() {
     return { entries: [], cursor: -1, lastValue: '', lastAcceptedAt: 0 }
@@ -34,5 +72,13 @@
     return { ...history, cursor }
   }
 
-  return { createScanHistory, isRapidDuplicate, recordSuccessfulScan, moveScanHistory }
+  return {
+    createScanHistory,
+    isRapidDuplicate,
+    recordSuccessfulScan,
+    moveScanHistory,
+    classifyScan,
+    createNoticeState,
+    shouldAnnounce,
+  }
 })

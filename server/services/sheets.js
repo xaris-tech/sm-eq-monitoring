@@ -172,7 +172,9 @@ async function deleteRow(sheetName, rowIndex) {
   })
 }
 
-async function ensureSheet(name, headers) {
+// buildFormatRequests(sheetId), when given, returns batchUpdate requests that
+// are applied only when this call creates the tab. Existing tabs keep their styling.
+async function ensureSheet(name, headers, buildFormatRequests) {
   if (!usingGoogleSheets) {
     await getSheetsClient()
   }
@@ -190,8 +192,9 @@ async function ensureSheet(name, headers) {
   })
   const existing = spreadsheet.data.sheets.find(s => s.properties.title === name)
 
+  let createdSheetId = null
   if (!existing) {
-    await sheets.spreadsheets.batchUpdate({
+    const created = await sheets.spreadsheets.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
       resource: {
         requests: [{
@@ -199,11 +202,24 @@ async function ensureSheet(name, headers) {
         }],
       },
     })
+    createdSheetId = created.data.replies[0].addSheet.properties.sheetId
   }
 
   const rows = await getRows(`'${name}'!A1:Z1`)
   if (!rows.length || rows[0].length === 0) {
     await appendRows(`'${name}'!A1:Z1`, [headers])
+  }
+
+  if (createdSheetId !== null && buildFormatRequests) {
+    // Formatting is cosmetic: a rejected request must not fail the write that created the tab.
+    try {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        resource: { requests: buildFormatRequests(createdSheetId) },
+      })
+    } catch (err) {
+      console.error(`[sheets] formatting '${name}' failed:`, err.message)
+    }
   }
 }
 

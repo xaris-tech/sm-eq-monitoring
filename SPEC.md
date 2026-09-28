@@ -13,8 +13,8 @@ A mobile-focused web application for logging equipment borrowing via QR codes. U
 - **Frontend:** Vanilla HTML, CSS, JavaScript (no framework, no build step)
 - **QR Scanning:** `html5-qrcode` library (browser-based camera scanner)
 - **QR Generation:** `qrcodejs` library (client-side, unlimited, no API calls)
-- **Backend:** Google Apps Script web app (REST API → Google Sheets)
-- **Hosting:** GitHub Pages / Netlify / Vercel (static site)
+- **Backend:** Node.js/Express API (`server/`, served on Vercel via `api/index.js`) → Google Sheets API. The original Google Apps Script backend (`apps-script/`) is legacy.
+- **Hosting:** Vercel (https://equipment-qr-logging.vercel.app)
 
 ## Commands
 

@@ -8,6 +8,8 @@ let scanProcessing = false
 let scannerResumeTimer = null
 let scanHistory = CommsScannerState.createScanHistory()
 let scanAudioContext = null
+let scanNotice = CommsScannerState.createNoticeState()
+let scannerEditTarget = null
 
 const beltpackAssignments = {}
 const headsetAssignments = {}
@@ -28,6 +30,8 @@ function showScanner() {
   const overlay = document.getElementById('scannerOverlay')
   overlay.classList.remove('hidden')
   scanProcessing = false
+  scanNotice = CommsScannerState.createNoticeState()
+  setScannerEditTarget(null)
   renderScanHistory()
   setScannerMessage('Point camera at any Comms QR code')
 
@@ -40,7 +44,7 @@ function showScanner() {
     (decodedText) => handleScan(decodedText),
     () => {}
   ).catch(() => {
-    setScannerMessage('Camera could not start. Check camera permission and try again.', true)
+    setScannerMessage('Camera could not start. Check camera permission and try again.', 'error')
   })
 }
 
@@ -62,6 +66,7 @@ function hideScanner() {
   }
   scannerPaused = false
   scanProcessing = false
+  setScannerEditTarget(null)
   document.getElementById('scannerOverlay').classList.add('hidden')
 }
 
@@ -69,21 +74,23 @@ function handleScan(decodedText) {
   if (scanProcessing) return
   scanProcessing = true
 
-  const value = decodedText.trim()
-  const assignment = CommsAssignment.parseAssignmentQr(value)
-  const scanValue = assignment ? value.toUpperCase() : value
+  const scan = CommsScannerState.classifyScan(decodedText, captureFormState())
+  const notice = CommsScannerState.shouldAnnounce(scanNotice, scan.value, Date.now())
+  scanNotice = notice.noticeState
 
-  if (CommsScannerState.isRapidDuplicate(scanHistory, scanValue, Date.now())) {
-    pauseScanner()
-    setScannerMessage('Already scanned. Ready for a different QR.')
-    resumeScanner(700)
+  if (scan.kind === 'already-complete' || scan.kind === 'already-assigned') {
+    if (notice.announce) showAlreadyScannedNotice(scan)
+    scanProcessing = false
     return
   }
 
-  if (assignment) {
+  setScannerEditTarget(null)
+  const assignment = scan.assignment
+
+  if (scan.kind === 'assign' || scan.kind === 'blocked') {
     pauseScanner()
     pendingScanEntry = {
-      value: scanValue,
+      value: scan.value,
       label: `${assignment.id} ${assignment.kind === 'beltpack' ? 'Beltpack' : 'Headset'}`,
     }
     if (showAssignmentPrompt(assignment)) {
@@ -95,10 +102,10 @@ function handleScan(decodedText) {
     return
   }
 
-  const item = findCommsItem(value)
+  const item = scan.kind === 'complete' ? findCommsItem(scan.itemId) : null
   if (!item) {
     pauseScanner()
-    setScannerMessage(`Unknown QR: ${value}`, true)
+    setScannerMessage(`Unknown QR: ${scan.value}`, 'error')
     resumeScanner(1200)
     return
   }
@@ -113,6 +120,43 @@ function handleScan(decodedText) {
     setScannerMessage('Item marked Complete. Ready for the next QR.')
   }
   resumeScanner(1000)
+}
+
+function showAlreadyScannedNotice(scan) {
+  if (scan.kind === 'already-complete') {
+    setScannerEditTarget(null)
+    setScannerMessage(`✓ ${findCommsItem(scan.itemId).item_name} already scanned`, 'warning')
+  } else {
+    const { assignment, current } = scan
+    const isBeltpack = assignment.kind === 'beltpack'
+    const detail = isBeltpack ? current.monitor_type : current.status
+    setScannerEditTarget(assignment)
+    setScannerMessage(
+      `${assignment.id} ${isBeltpack ? 'Beltpack' : 'Headset'} already assigned to ${current.user.trim()}${detail ? ` (${detail})` : ''}`,
+      'warning'
+    )
+  }
+  playAlreadyScannedFeedback()
+}
+
+function playAlreadyScannedFeedback() {
+  if (navigator.vibrate) navigator.vibrate([40, 60, 40])
+}
+
+function setScannerEditTarget(assignment) {
+  scannerEditTarget = assignment
+  document.getElementById('scannerEditBtn').classList.toggle('hidden', !assignment)
+}
+
+function editScannedAssignment() {
+  const assignment = scannerEditTarget
+  if (!assignment) return
+  setScannerEditTarget(null)
+  pauseScanner()
+  scanProcessing = true
+  // Editing an existing assignment is not a new scan, so it adds no history entry.
+  pendingScanEntry = null
+  if (!showAssignmentPrompt(assignment)) resumeScanner(900)
 }
 
 function playScanSuccessFeedback() {
@@ -180,16 +224,18 @@ function resumeScanner(delay = 0) {
   }, delay)
 }
 
-function setScannerMessage(message, isError = false) {
+function setScannerMessage(message, tone = '') {
   const hint = document.getElementById('scannerHint')
   hint.textContent = message
-  hint.classList.toggle('is-error', isError)
+  hint.classList.toggle('is-error', tone === 'error')
+  hint.classList.toggle('is-warning', tone === 'warning')
 }
 
 function recordCompletedScan(entry) {
   const result = CommsScannerState.recordSuccessfulScan(scanHistory, entry, Date.now())
   scanHistory = result.history
   renderScanHistory()
+  saveDraft()
   return result.accepted
 }
 
@@ -217,24 +263,28 @@ function renderScanHistory() {
 function navigateScanHistory(direction) {
   scanHistory = CommsScannerState.moveScanHistory(scanHistory, direction)
   renderScanHistory()
+  saveDraft()
 }
 
 function showAssignmentPrompt(assignment) {
   if (assignment.kind === 'headset' && CommsAssignment.isHeadsetDisabled(beltpackAssignments[assignment.id])) {
     setError(`${assignment.id} Headset is not used because ${assignment.id} Beltpack is assigned to In-ear.`)
-    setScannerMessage(`${assignment.id} Headset is disabled because its beltpack uses In-ear.`, true)
+    setScannerMessage(`${assignment.id} Headset is disabled because its beltpack uses In-ear.`, 'error')
     return false
   }
 
   pendingAssignment = assignment
   const isBeltpack = assignment.kind === 'beltpack'
-  const current = isBeltpack ? beltpackAssignments[assignment.id] : headsetAssignments[assignment.id]
+  const formState = captureFormState()
+  const current = isBeltpack ? formState.beltpacks[assignment.id] : formState.headsets[assignment.id]
   document.getElementById('assignmentTitle').textContent = `${assignment.id} ${isBeltpack ? 'Beltpack' : 'Headset'}`
   document.getElementById('assignmentDescription').textContent = isBeltpack
     ? 'Enter the assigned name and monitor type.'
     : 'Enter the assigned name and headset status.'
   document.getElementById('assignmentName').value = current?.user || ''
   document.getElementById('assignmentMonitorType').value = current?.monitor_type || ''
+  document.getElementById('assignmentNotes').value = isBeltpack ? current?.notes || '' : ''
+  document.getElementById('assignmentNotesField').classList.toggle('hidden', !isBeltpack)
   document.getElementById('assignmentHeadsetStatus').value = current?.status || 'Working'
   document.getElementById('assignmentMonitorField').classList.toggle('hidden', !isBeltpack)
   document.getElementById('assignmentStatusField').classList.toggle('hidden', isBeltpack)
@@ -248,6 +298,7 @@ function closeAssignmentPrompt() {
   pendingAssignment = null
   pendingScanEntry = null
   document.getElementById('assignmentOverlay').classList.add('hidden')
+  scanNotice = { ...scanNotice, seenAt: Date.now() }
   setScannerMessage('Assignment cancelled. Ready for the next QR.')
   resumeScanner(300)
 }
@@ -259,10 +310,15 @@ function confirmAssignmentPrompt() {
 
   try {
     if (pendingAssignment.kind === 'beltpack') {
-      const assignment = CommsAssignment.createBeltpackAssignment(name, document.getElementById('assignmentMonitorType').value)
+      const assignment = CommsAssignment.createBeltpackAssignment(
+        name,
+        document.getElementById('assignmentMonitorType').value,
+        document.getElementById('assignmentNotes').value
+      )
       beltpackAssignments[pendingAssignment.id] = assignment
       document.getElementById(`beltpack-${pendingAssignment.id}`).value = assignment.user
       document.getElementById(`beltpack-type-${pendingAssignment.id}`).value = assignment.monitor_type
+      document.getElementById(`beltpack-notes-${pendingAssignment.id}`).value = assignment.notes
       syncHeadsetAvailability(pendingAssignment.id)
     } else {
       const assignment = CommsAssignment.createHeadsetAssignment(name, document.getElementById('assignmentHeadsetStatus').value)
@@ -274,7 +330,9 @@ function confirmAssignmentPrompt() {
     pendingAssignment = null
     pendingScanEntry = null
     document.getElementById('assignmentOverlay').classList.add('hidden')
+  scanNotice = { ...scanNotice, seenAt: Date.now() }
     if (completedScan) recordCompletedScan(completedScan)
+    saveDraft()
     setScannerMessage('Assignment saved. Ready for the next QR.')
     resumeScanner(300)
     setError(null)
@@ -321,15 +379,62 @@ function populateEventDropdown() {
     COMMS_EVENTS.map(e => `<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`).join('')
 
   select.addEventListener('change', () => {
-    const field = document.getElementById('otherEventField')
-    if (select.value === 'Others') {
-      field.classList.remove('hidden')
-      document.getElementById('otherEvent').focus()
-    } else {
-      field.classList.add('hidden')
-      document.getElementById('otherEvent').value = ''
-    }
+    syncOtherEventField()
+    if (select.value === 'Others') document.getElementById('otherEvent').focus()
   })
+}
+
+function syncOtherEventField() {
+  const isOther = document.getElementById('eventSelect').value === 'Others'
+  document.getElementById('otherEventField').classList.toggle('hidden', !isOther)
+  if (!isOther) document.getElementById('otherEvent').value = ''
+}
+
+const PHOTO_PLACEHOLDER = '<span class="ref-thumb ref-thumb-empty">No photo yet</span>'
+
+function photoThumb(src, label) {
+  if (!src) return PHOTO_PLACEHOLDER
+  return `
+    <button type="button" class="ref-thumb" data-photo="${escapeHtml(src)}" data-label="${escapeHtml(label)}"
+      aria-label="View photo of ${escapeHtml(label)}">
+      <img src="${escapeHtml(src)}" alt="${escapeHtml(label)}" loading="lazy">
+    </button>`
+}
+
+function renderReferencePhotos() {
+  document.querySelectorAll('[data-reference-photo]').forEach(el => {
+    const key = el.dataset.referencePhoto
+    const label = el.dataset.referenceLabel
+    el.innerHTML = `${photoThumb(COMMS_PHOTOS[key], label)}<span class="ref-caption">${escapeHtml(label)}</span>`
+  })
+}
+
+// A photo path that fails to load falls back to the placeholder, never a broken image.
+function handlePhotoError(e) {
+  if (e.target.tagName !== 'IMG' || !e.target.closest('.ref-thumb')) return
+  e.target.closest('.ref-thumb').outerHTML = PHOTO_PLACEHOLDER
+}
+
+let photoViewerReturnFocus = null
+
+function openPhotoViewer(thumb) {
+  const viewer = document.getElementById('photoViewer')
+  const image = document.getElementById('photoViewerImage')
+  image.src = thumb.dataset.photo
+  image.alt = thumb.dataset.label
+  document.getElementById('photoViewerCaption').textContent = thumb.dataset.label
+  photoViewerReturnFocus = thumb
+  viewer.classList.remove('hidden')
+  document.getElementById('photoViewerCloseBtn').focus()
+}
+
+function closePhotoViewer() {
+  const viewer = document.getElementById('photoViewer')
+  if (viewer.classList.contains('hidden')) return
+  viewer.classList.add('hidden')
+  document.getElementById('photoViewerImage').removeAttribute('src')
+  if (photoViewerReturnFocus) photoViewerReturnFocus.focus()
+  photoViewerReturnFocus = null
 }
 
 function buildChecklist() {
@@ -341,6 +446,7 @@ function buildChecklist() {
     div.id = `checklist-${item.item_id}`
     div.innerHTML = `
       <div class="checklist-item-header">
+        ${photoThumb(COMMS_PHOTOS[item.item_id], item.item_name)}
         <div class="checklist-item-info">
           <div class="checklist-item-name">${escapeHtml(item.item_name)}</div>
           <div class="checklist-item-spec">${escapeHtml(item.spec)}</div>
@@ -351,7 +457,7 @@ function buildChecklist() {
           <button class="status-btn" data-id="${item.item_id}" data-value="N/A">N/A</button>
         </div>
       </div>
-      <div class="checklist-item-notes" id="notes-${item.item_id}">
+      <div class="checklist-item-notes visible" id="notes-${item.item_id}">
         <input type="text" placeholder="Notes (optional)" data-id="${item.item_id}">
       </div>
     `
@@ -361,24 +467,19 @@ function buildChecklist() {
   container.addEventListener('click', e => {
     const btn = e.target.closest('.status-btn')
     if (!btn) return
-
-    const id = btn.dataset.id
-    const value = btn.dataset.value
-    checklistState[id] = value
-
-    const group = btn.closest('.status-group')
-    group.querySelectorAll('.status-btn').forEach(b => {
-      b.className = 'status-btn'
-    })
-    btn.classList.add(`selected-${value.toLowerCase()}`)
-
-    const notesField = document.getElementById(`notes-${id}`)
-    if (value === 'N/A') {
-      notesField.classList.remove('visible')
-    } else {
-      notesField.classList.add('visible')
-    }
+    setItemStatus(btn.dataset.id, btn.dataset.value)
   })
+}
+
+function setItemStatus(id, value, showNotes = value !== 'N/A') {
+  checklistState[id] = value
+
+  document.querySelectorAll(`#checklist-${id} .status-btn`).forEach(b => {
+    b.className = 'status-btn'
+    if (b.dataset.value === value) b.classList.add(`selected-${value.toLowerCase()}`)
+  })
+
+  document.getElementById(`notes-${id}`).classList.toggle('visible', showNotes)
 }
 
 function buildBeltpacks() {
@@ -394,6 +495,7 @@ function buildBeltpacks() {
         <option value="In-ear">In-ear</option>
         <option value="Headset">Headset</option>
       </select>
+      <input type="text" id="beltpack-notes-${id}" class="beltpack-notes" placeholder="Notes (optional)" aria-label="${id} beltpack notes">
     `
     container.appendChild(div)
   })
@@ -458,6 +560,79 @@ function syncHeadsetAvailability(id) {
   }
 }
 
+function formValue(id) {
+  return document.getElementById(id).value
+}
+
+function captureFormState() {
+  const state = CommsFormState.createEmptyFormState(COMMS_ITEMS.map(i => i.item_id), BELTPACK_IDS)
+  state.name = formValue('fullName')
+  state.event = formValue('eventSelect')
+  state.eventOther = formValue('otherEvent')
+  COMMS_ITEMS.forEach(({ item_id: id }) => {
+    state.items[id] = {
+      status: checklistState[id] || 'Incomplete',
+      notes: document.querySelector(`#notes-${id} input`).value,
+    }
+  })
+  BELTPACK_IDS.forEach(id => {
+    state.beltpacks[id] = {
+      user: formValue(`beltpack-${id}`),
+      monitor_type: formValue(`beltpack-type-${id}`),
+      notes: formValue(`beltpack-notes-${id}`),
+    }
+    state.headsets[id] = {
+      user: formValue(`headset-user-${id}`),
+      status: formValue(`headset-status-${id}`),
+      notes: formValue(`headset-notes-${id}`),
+    }
+  })
+  state.scanHistory = scanHistory
+  return CommsFormState.normalizeFormState(state, COMMS_ITEMS.map(i => i.item_id), BELTPACK_IDS)
+}
+
+// Applies a form state through the same paths user input takes, so derived
+// UI (status buttons, notes visibility, In-ear headset blocking) stays correct.
+function applyFormState(state) {
+  const next = CommsFormState.normalizeFormState(state, COMMS_ITEMS.map(i => i.item_id), BELTPACK_IDS)
+
+  document.getElementById('fullName').value = next.name
+  document.getElementById('eventSelect').value = next.event
+  document.getElementById('otherEvent').value = next.eventOther
+  syncOtherEventField()
+
+  COMMS_ITEMS.forEach(({ item_id: id }) => {
+    const item = next.items[id]
+    document.querySelector(`#notes-${id} input`).value = item.notes
+    setItemStatus(id, item.status)
+  })
+
+  BELTPACK_IDS.forEach(id => {
+    const beltpack = next.beltpacks[id]
+    document.getElementById(`beltpack-${id}`).value = beltpack.user
+    document.getElementById(`beltpack-type-${id}`).value = beltpack.monitor_type
+    document.getElementById(`beltpack-notes-${id}`).value = beltpack.notes
+    if (beltpack.user || beltpack.monitor_type) {
+      beltpackAssignments[id] = { user: beltpack.user.trim(), monitor_type: beltpack.monitor_type }
+    } else {
+      delete beltpackAssignments[id]
+    }
+    delete headsetAssignments[id]
+    syncHeadsetAvailability(id)
+
+    if (!CommsAssignment.isHeadsetDisabled(beltpackAssignments[id])) {
+      const headset = next.headsets[id]
+      document.getElementById(`headset-user-${id}`).value = headset.user
+      document.getElementById(`headset-status-${id}`).value = headset.status
+      document.getElementById(`headset-notes-${id}`).value = headset.notes
+      if (headset.user) headsetAssignments[id] = { ...headset, user: headset.user.trim() }
+    }
+  })
+
+  scanHistory = next.scanHistory
+  renderScanHistory()
+}
+
 function collectPayload() {
   const name = document.getElementById('fullName').value.trim()
   if (!name) { setError('Please enter your full name.'); document.getElementById('fullName').focus(); return null }
@@ -477,6 +652,7 @@ function collectPayload() {
     beltpacks[id] = {
       user: document.getElementById(`beltpack-${id}`).value.trim() || 'N/A',
       monitor_type: document.getElementById(`beltpack-type-${id}`).value,
+      notes: document.getElementById(`beltpack-notes-${id}`).value.trim(),
     }
   })
 
@@ -513,6 +689,7 @@ async function handleSubmit() {
   try {
     const result = await submitChecklist(payload)
     if (result.success) {
+      clearStoredDraft()
       showConfirm(payload)
     } else {
       setError(result.error || 'Server error. Try again.')
@@ -555,44 +732,59 @@ function showConfirm(payload) {
   window.scrollTo(0, 0)
 }
 
+function readStoredDraft() {
+  try {
+    return localStorage.getItem(CommsDraft.DRAFT_KEY)
+  } catch (_) {
+    return null
+  }
+}
+
+function writeStoredDraft(value) {
+  try {
+    localStorage.setItem(CommsDraft.DRAFT_KEY, value)
+  } catch (_) {}
+}
+
+function clearStoredDraft() {
+  try {
+    localStorage.removeItem(CommsDraft.DRAFT_KEY)
+  } catch (_) {}
+}
+
+function saveDraft() {
+  if (!document.getElementById('formSection').classList.contains('active')) return
+  const state = captureFormState()
+  if (CommsDraft.isEmptyDraft(state, COMMS_ITEMS.map(i => i.item_id), BELTPACK_IDS)) {
+    clearStoredDraft()
+  } else {
+    writeStoredDraft(CommsDraft.serializeDraft(state, Date.now()))
+  }
+}
+
+function restoreDraft() {
+  const draft = CommsDraft.parseDraft(readStoredDraft(), Date.now(), COMMS_ITEMS.map(i => i.item_id), BELTPACK_IDS)
+  if (!draft) {
+    clearStoredDraft()
+    return
+  }
+
+  applyFormState(draft.state)
+  document.getElementById('draftTime').textContent = new Date(draft.savedAt).toLocaleTimeString('en-PH', {
+    hour: 'numeric', minute: '2-digit',
+  })
+  document.getElementById('draftBar').classList.remove('hidden')
+}
+
+function startOver() {
+  resetForm()
+  clearStoredDraft()
+}
+
 function resetForm() {
-  document.getElementById('fullName').value = ''
-  document.getElementById('eventSelect').value = ''
-  document.getElementById('otherEventField').classList.add('hidden')
-  document.getElementById('otherEvent').value = ''
-  COMMS_ITEMS.forEach(item => {
-    checklistState[item.item_id] = 'Incomplete'
-    const group = document.querySelector(`#checklist-${item.item_id} .status-group`)
-    if (group) {
-      group.querySelectorAll('.status-btn').forEach(b => {
-        b.className = 'status-btn'
-        if (b.dataset.value === 'Incomplete') b.classList.add('selected-incomplete')
-      })
-    }
-    const notesField = document.getElementById(`notes-${item.item_id}`)
-    if (notesField) {
-      notesField.classList.remove('visible')
-      notesField.querySelector('input').value = ''
-    }
-  })
-
-  BELTPACK_IDS.forEach(id => {
-    document.getElementById(`beltpack-${id}`).value = ''
-    document.getElementById(`beltpack-type-${id}`).value = ''
-    delete beltpackAssignments[id]
-  })
-
-  BELTPACK_IDS.forEach(id => {
-    document.getElementById(`headset-user-${id}`).value = ''
-    document.getElementById(`headset-status-${id}`).value = 'Working'
-    document.getElementById(`headset-notes-${id}`).value = ''
-    delete headsetAssignments[id]
-    syncHeadsetAvailability(id)
-  })
-
+  applyFormState(CommsFormState.createEmptyFormState(COMMS_ITEMS.map(i => i.item_id), BELTPACK_IDS))
+  document.getElementById('draftBar').classList.add('hidden')
   setError(null)
-  scanHistory = CommsScannerState.createScanHistory()
-  renderScanHistory()
   const btn = document.getElementById('submitBtn')
   btn.innerHTML = '<i data-lucide="check"></i> Submit Checklist'
   btn.disabled = false
@@ -609,11 +801,32 @@ document.addEventListener('DOMContentLoaded', () => {
   buildChecklist()
   buildBeltpacks()
   buildHeadsets()
+  renderReferencePhotos()
+  restoreDraft()
+  if (CommsDraft.isInAppBrowser(navigator.userAgent)) {
+    document.getElementById('inAppBrowserNote').classList.remove('hidden')
+  }
+
+  const formSection = document.getElementById('formSection')
+  ;['input', 'change', 'click'].forEach(type => formSection.addEventListener(type, saveDraft))
+  window.addEventListener('pagehide', saveDraft)
+  document.getElementById('draftStartOverBtn').addEventListener('click', startOver)
+
+  document.addEventListener('error', handlePhotoError, true)
+  formSection.addEventListener('click', e => {
+    const thumb = e.target.closest('button.ref-thumb')
+    if (thumb) openPhotoViewer(thumb)
+  })
+  document.getElementById('photoViewer').addEventListener('click', closePhotoViewer)
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closePhotoViewer()
+  })
 
   document.getElementById('scanItemBtn').addEventListener('click', showScanner)
   document.getElementById('scannerExitBtn').addEventListener('click', hideScanner)
   document.getElementById('scannerPreviousBtn').addEventListener('click', () => navigateScanHistory(-1))
   document.getElementById('scannerNextBtn').addEventListener('click', () => navigateScanHistory(1))
+  document.getElementById('scannerEditBtn').addEventListener('click', editScannedAssignment)
   document.getElementById('assignmentCancelBtn').addEventListener('click', closeAssignmentPrompt)
   document.getElementById('assignmentConfirmBtn').addEventListener('click', confirmAssignmentPrompt)
   document.getElementById('assignmentName').addEventListener('keydown', e => {

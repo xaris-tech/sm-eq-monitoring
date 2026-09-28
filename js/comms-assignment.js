@@ -19,10 +19,10 @@
     return user
   }
 
-  function createBeltpackAssignment(name, monitorType) {
+  function createBeltpackAssignment(name, monitorType, notes = '') {
     const user = requireName(name)
     if (!MONITOR_TYPES.has(monitorType)) throw new Error('A valid monitor type is required')
-    return { user, monitor_type: monitorType }
+    return { user, monitor_type: monitorType, notes: String(notes || '').trim() }
   }
 
   function createHeadsetAssignment(name, status, notes = '') {

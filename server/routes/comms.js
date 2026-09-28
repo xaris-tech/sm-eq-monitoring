@@ -1,8 +1,15 @@
 const { Router } = require('express')
-const { v4: uuidv4 } = require('uuid')
 const { getRows, appendRows, deleteRow, ensureSheet } = require('../services/sheets')
 const { ApiError } = require('../middleware/errorHandler')
-const { serializeBeltpack, serializeHeadset } = require('../services/commsSerialization')
+const {
+  LOG_SHEET,
+  DETAILS_SHEET,
+  LOG_HEADERS,
+  DETAILS_HEADERS,
+  buildReportRows,
+  buildFormatRequests,
+  nextSubmissionNo,
+} = require('../services/commsReport')
 
 const router = Router()
 
@@ -10,19 +17,8 @@ const CE_SHEET = 'CommsEquipment'
 const CE_HEADERS = ['item_id', 'item_name', 'spec']
 const CE = { ID: 0, NAME: 1, SPEC: 2 }
 
-const CL_SHEET = 'CommsChecklist'
-const CL_HEADERS = ['id', 'name', 'event', 'event_other', 'timestamp',
-  'COMMS-BASE-01', 'COMMS-ANTENNA-01', 'COMMS-CABLE-01', 'COMMS-POE-01',
-  'COMMS-KNOB-01', 'COMMS-BATT-01', 'COMMS-CHARGER-01', 'COMMS-XLR-01', 'COMMS-CASE-01',
-  'SM1_user', 'SM2_user', 'SM3_user', 'SM4_user', 'SM5_user', 'SM6_user', 'SM7_user', 'SM8_user',
-  'SM1_headset', 'SM2_headset', 'SM3_headset', 'SM4_headset', 'SM5_headset', 'SM6_headset', 'SM7_headset', 'SM8_headset',
-]
-const COMMS_ITEM_IDS = ['COMMS-BASE-01','COMMS-ANTENNA-01','COMMS-CABLE-01','COMMS-POE-01','COMMS-KNOB-01','COMMS-BATT-01','COMMS-CHARGER-01','COMMS-XLR-01','COMMS-CASE-01']
-const BELTPACK_KEYS = ['SM1','SM2','SM3','SM4','SM5','SM6','SM7','SM8']
-
-const CL_ITEM_START = 5
-const CL_BELTPACK_START = 14
-const CL_HEADSET_START = 22
+// Submissions go to the Checklist Log / Checklist Details tabs. The legacy
+// 'CommsChecklist' tab is frozen: nothing writes to it any more.
 
 // GET /api/comms
 router.get('/', async (req, res, next) => {
@@ -78,33 +74,18 @@ router.delete('/:item_id', async (req, res, next) => {
 // POST /api/comms/checklist
 router.post('/checklist', async (req, res, next) => {
   try {
-    const { name, event, event_other, timestamp, items, beltpacks, headsets } = req.body
+    const { name } = req.body
     if (!name || !name.trim()) throw ApiError(400, 'name is required')
 
-    await ensureSheet(CL_SHEET, CL_HEADERS)
+    await ensureSheet(LOG_SHEET, LOG_HEADERS, id => buildFormatRequests(LOG_SHEET, id))
+    await ensureSheet(DETAILS_SHEET, DETAILS_HEADERS, id => buildFormatRequests(DETAILS_SHEET, id))
 
-    const row = new Array(30).fill('')
-    row[0] = uuidv4()
-    row[1] = name.trim()
-    row[2] = event || ''
-    row[3] = event_other || ''
-    row[4] = timestamp || new Date().toISOString()
+    const ids = (await getRows(`'${LOG_SHEET}'!A:A`)).slice(1).map(r => r[0])
+    const { submission, logRow, detailRows } = buildReportRows(req.body, nextSubmissionNo(ids))
 
-    COMMS_ITEM_IDS.forEach((id, i) => {
-      const item = (items || []).find(it => it.item_id === id)
-      row[CL_ITEM_START + i] = item ? (item.status || '') + ' | ' + (item.notes || '') : ''
-    })
-
-    BELTPACK_KEYS.forEach((key, i) => {
-      row[CL_BELTPACK_START + i] = serializeBeltpack((beltpacks || {})[key])
-    })
-
-    BELTPACK_KEYS.forEach((key, i) => {
-      row[CL_HEADSET_START + i] = serializeHeadset((headsets || {})[key])
-    })
-
-    await appendRows(`'${CL_SHEET}'!A:AD`, [row])
-    res.status(201).json({ success: true })
+    await appendRows(`'${LOG_SHEET}'!A:H`, [logRow])
+    await appendRows(`'${DETAILS_SHEET}'!A:J`, detailRows)
+    res.status(201).json({ success: true, submission })
   } catch (err) {
     next(err)
   }
@@ -113,15 +94,18 @@ router.post('/checklist', async (req, res, next) => {
 // GET /api/comms/checklists
 router.get('/checklists', async (req, res, next) => {
   try {
-    const rows = await getRows(`'${CL_SHEET}'!A:AD`)
+    const rows = await getRows(`'${LOG_SHEET}'!A:H`)
     if (rows.length < 2) return res.json({ checklists: [] })
 
     const checklists = rows.slice(1).filter(r => r[0]).map(r => ({
       id: r[0],
-      name: r[1],
-      event: r[2],
-      event_other: r[3],
-      timestamp: r[4],
+      date: r[1],
+      time: r[2],
+      event: r[3],
+      name: r[4],
+      items_complete: r[5],
+      issues_found: Number(r[6]) || 0,
+      issue_summary: r[7],
     }))
 
     res.json({ checklists })

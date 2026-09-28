@@ -28,6 +28,22 @@ const COMMS_ITEMS = [
 
 const BELTPACK_IDS = ['SM1', 'SM2', 'SM3', 'SM4', 'SM5', 'SM6', 'SM7', 'SM8']
 
+// Reference photos shown in the Comms Checklist. Leave '' until a photo exists;
+// the checklist shows "No photo yet". See img/comms/README.md for naming and size.
+const COMMS_PHOTOS = {
+  'COMMS-BASE-01': 'img/comms/COMMS-BASE-01.jpg',
+  'COMMS-ANTENNA-01': 'img/comms/COMMS-ANTENNA-01.jpg',
+  'COMMS-CABLE-01': 'img/comms/COMMS-CABLE-01.jpg',
+  'COMMS-POE-01': 'img/comms/COMMS-POE-01.jpg',
+  'COMMS-KNOB-01': 'img/comms/COMMS-KNOB-01.jpg',
+  'COMMS-BATT-01': 'img/comms/COMMS-BATT-01.jpg',
+  'COMMS-CHARGER-01': 'img/comms/COMMS-CHARGER-01.jpg',
+  'COMMS-XLR-01': 'img/comms/COMMS-XLR-01.jpg',
+  'COMMS-CASE-01': 'img/comms/COMMS-CASE-01.jpg',
+  BELTPACK: 'img/comms/BELTPACK.jpg',
+  HEADSET: 'img/comms/HEADSET.jpg',
+}
+
 const MOCK_EQUIPMENT = [
   { item_id: 'EQ-001', item_name: 'Tool Box', type: 'Non-Consumable', description: '2 pcs', stock: 2, status: 'available' },
   { item_id: 'EQ-002', item_name: 'Gun tacker', type: 'Non-Consumable', description: '1 pc', stock: 1, status: 'available' },

@@ -7,7 +7,7 @@ const {
   createHeadsetAssignment,
   isHeadsetDisabled,
 } = require('../js/comms-assignment')
-const { serializeBeltpack, serializeHeadset } = require('../server/services/commsSerialization')
+const { buildReportRows } = require('../server/services/commsReport')
 const fs = require('node:fs')
 const path = require('node:path')
 
@@ -28,7 +28,30 @@ test('beltpack assignment requires a name and supported monitor type', () => {
   assert.deepEqual(createBeltpackAssignment('  Juan  ', 'In-ear'), {
     user: 'Juan',
     monitor_type: 'In-ear',
+    notes: '',
   })
+})
+
+test('beltpack assignment keeps optional trimmed notes', () => {
+  assert.deepEqual(createBeltpackAssignment('Maria', 'In-ear', '  left earpiece crackles '), {
+    user: 'Maria',
+    monitor_type: 'In-ear',
+    notes: 'left earpiece crackles',
+  })
+  assert.equal(createBeltpackAssignment('Maria', 'Headset', undefined).notes, '')
+  assert.throws(() => createBeltpackAssignment('', 'In-ear', 'note'), /name is required/i)
+})
+
+test('every comms row shows notes, and beltpacks carry notes end to end', () => {
+  const root = path.resolve(__dirname, '..')
+  const html = fs.readFileSync(path.join(root, 'comms-checklist.html'), 'utf8')
+  const script = fs.readFileSync(path.join(root, 'js/comms-checklist.js'), 'utf8')
+
+  assert.match(script, /class="checklist-item-notes visible"/)
+  assert.match(script, /id="beltpack-notes-\$\{id\}"/)
+  assert.match(html, /id="assignmentNotes"/)
+  const payloadBody = script.match(/function collectPayload\(\) \{([\s\S]*?)\n\}/)?.[1] ?? ''
+  assert.match(payloadBody, /beltpack-notes-/)
 })
 
 test('headset assignment requires a name and supported status', () => {
@@ -57,7 +80,8 @@ test('Comms Checklist includes the assignment dialog and paired controls', () =>
   assert.match(html, /id="assignmentName"/)
   assert.match(html, /id="assignmentMonitorType"/)
   assert.match(html, /id="assignmentHeadsetStatus"/)
-  assert.match(script, /parseAssignmentQr/)
+  const scanRouting = script + fs.readFileSync(path.join(root, 'js/comms-scanner-state.js'), 'utf8')
+  assert.match(scanRouting, /parseAssignmentQr/)
   assert.match(script, /syncHeadsetAvailability/)
 })
 
@@ -86,10 +110,18 @@ test('Show All QR Codes includes a separate section for all paired devices', () 
   assert.match(script, /HEADSET:\$\{id\}/)
 })
 
-test('API serialization preserves legacy values and stores structured assignments', () => {
-  assert.equal(serializeBeltpack('Juan'), 'Juan')
-  assert.equal(serializeBeltpack({ user: 'Juan', monitor_type: 'Headset' }), 'Juan | Headset')
-  assert.equal(serializeHeadset({ status: 'Working', notes: 'old format' }), 'Working | old format')
-  assert.equal(serializeHeadset({ user: 'Juan', status: 'Needs Repair', notes: '' }), 'Juan | Needs Repair')
-  assert.equal(serializeHeadset({ user: '', status: 'N/A', notes: '' }), 'N/A')
+test('API report rows accept legacy and structured assignments', () => {
+  const { detailRows } = buildReportRows({
+    name: 'Juan',
+    event: 'Sunday Service',
+    beltpacks: { SM1: 'Juan', SM2: { user: 'Ana', monitor_type: 'Headset' }, SM3: { user: 'N/A', monitor_type: '' } },
+    headsets: { SM1: { status: 'Working', notes: 'old format' }, SM2: { user: 'Ana', status: 'Needs Repair', notes: '' } },
+  }, 1)
+  const row = equipment => detailRows.find(r => r[5] === equipment)
+
+  assert.deepEqual(row('SM1 Beltpack').slice(6, 10), ['Juan', '', '', ''])
+  assert.deepEqual(row('SM2 Beltpack').slice(6, 10), ['Ana', 'Headset', '', ''])
+  assert.deepEqual(row('SM3 Beltpack').slice(6, 10), ['', '', '', ''])
+  assert.deepEqual(row('SM1 Headset').slice(6, 10), ['', '', 'Working', 'old format'])
+  assert.deepEqual(row('SM2 Headset').slice(6, 10), ['Ana', '', 'Needs Repair', ''])
 })

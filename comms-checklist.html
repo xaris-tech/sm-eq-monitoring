@@ -9,11 +9,142 @@
   <link rel="stylesheet" href="css/style.css">
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script src="js/config.js?v=2"></script>
+  <script src="js/config.js?v=4"></script>
   <script src="js/api.js?v=2"></script>
-  <script src="js/comms-assignment.js?v=1"></script>
-  <script src="js/comms-scanner-state.js?v=1"></script>
+  <script src="js/comms-assignment.js?v=2"></script>
+  <script src="js/comms-scanner-state.js?v=2"></script>
+  <script src="js/comms-form-state.js?v=1"></script>
+  <script src="js/comms-draft.js?v=1"></script>
   <style>
+    .ref-thumb {
+      --ref-thumb-size: 112px;
+      flex-shrink: 0;
+      width: var(--ref-thumb-size);
+      height: var(--ref-thumb-size);
+      border-radius: var(--radius);
+      border: 1px solid var(--border-light);
+      background: var(--bg);
+      padding: 0;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button.ref-thumb {
+      cursor: zoom-in;
+    }
+
+    .ref-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: white;
+    }
+
+    @media (min-width: 480px) {
+      .ref-thumb {
+        --ref-thumb-size: 128px;
+      }
+    }
+
+    .ref-thumb-empty {
+      font-size: 0.75rem;
+      line-height: 1.2;
+      text-align: center;
+      color: var(--text-muted);
+      border-style: dashed;
+    }
+
+    .ref-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+
+    .ref-strip-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-1);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .photo-viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      background: rgba(15, 23, 42, 0.94);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      cursor: zoom-out;
+    }
+
+    .photo-viewer img {
+      max-width: 100%;
+      max-height: 75vh;
+      object-fit: contain;
+      border-radius: var(--radius);
+      background: white;
+    }
+
+    .photo-viewer-caption {
+      color: white;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .photo-viewer-close {
+      position: absolute;
+      top: max(var(--space-3), env(safe-area-inset-top));
+      left: var(--space-3);
+    }
+
+    .draft-bar,
+    .in-app-note {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      font-size: 0.8125rem;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius);
+      margin-bottom: var(--space-4);
+    }
+
+    .draft-bar {
+      background: var(--success-bg);
+      color: var(--text);
+    }
+
+    .in-app-note {
+      background: var(--warning-bg);
+      color: var(--text-secondary);
+    }
+
+    .draft-bar.hidden,
+    .in-app-note.hidden {
+      display: none;
+    }
+
+    .draft-start-over {
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      font-weight: 600;
+      color: var(--steel);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
     .section-title {
       font-size: 0.75rem;
       font-weight: 700;
@@ -39,13 +170,15 @@
 
     .checklist-item-header {
       display: flex;
+      flex-wrap: wrap;
       align-items: flex-start;
       justify-content: space-between;
       gap: var(--space-3);
     }
 
+    /* The 120px basis wraps the status buttons onto their own line on narrow phones. */
     .checklist-item-info {
-      flex: 1;
+      flex: 1 1 120px;
       min-width: 0;
     }
 
@@ -64,6 +197,7 @@
       display: flex;
       gap: var(--space-1);
       flex-shrink: 0;
+      margin-left: auto;
     }
 
     .status-btn {
@@ -147,6 +281,17 @@
       padding: 7px var(--space-2);
       font-size: 0.8125rem;
       width: 100%;
+    }
+
+    .beltpack-field .beltpack-notes {
+      grid-column: 2 / -1;
+    }
+
+    .field-optional {
+      font-weight: 400;
+      color: var(--text-muted);
+      text-transform: none;
+      letter-spacing: 0;
     }
 
     .beltpack-field input::placeholder {
@@ -277,6 +422,15 @@
       <h1 class="workflow-title">COMMS CHECKLIST</h1>
       <p>Verify and log comms equipment for church events and activities.</p>
 
+      <div id="inAppBrowserNote" class="in-app-note hidden" role="note">
+        For best results, open in Chrome/Safari. This app's browser may not keep your progress.
+      </div>
+      <div id="draftBar" class="draft-bar hidden" role="status">
+        <span>Restored your progress from <strong id="draftTime"></strong></span>
+        <span aria-hidden="true">&middot;</span>
+        <button type="button" id="draftStartOverBtn" class="draft-start-over">Start over</button>
+      </div>
+
       <!-- Header Fields -->
       <div class="field">
         <label>Full Name <span class="required-star">*</span></label>
@@ -309,11 +463,17 @@
       <!-- Beltpack Assignment -->
       <div class="section-title">Beltpack Assignment</div>
       <p style="font-size:0.8125rem;margin-top:calc(var(--space-3)*-1);margin-bottom:var(--space-3)">Scan a beltpack QR or enter its assigned name and monitor type.</p>
+      <div class="ref-strip" aria-label="Beltpack reference photo">
+        <div class="ref-strip-item" data-reference-photo="BELTPACK" data-reference-label="Beltpack"></div>
+      </div>
       <div class="beltpack-grid" id="beltpackContainer"></div>
 
       <!-- Headset Assignment -->
       <div class="section-title">Headset Assignment</div>
       <p style="font-size:0.8125rem;margin-top:calc(var(--space-3)*-1);margin-bottom:var(--space-3)">Scan a headset QR or enter its assigned name and status. In-ear selections disable the paired headset.</p>
+      <div class="ref-strip" aria-label="Headset reference photo">
+        <div class="ref-strip-item" data-reference-photo="HEADSET" data-reference-label="Headset"></div>
+      </div>
       <div id="headsetContainer"></div>
 
       <!-- Submit -->
@@ -375,7 +535,10 @@
           Next <i data-lucide="chevron-right"></i>
         </button>
       </div>
-      <div id="scannerHint" class="scanner-hint">Point camera at any Comms QR code</div>
+      <div id="scannerHint" class="scanner-hint" aria-live="polite">Point camera at any Comms QR code</div>
+      <button id="scannerEditBtn" class="scanner-nav-btn scanner-edit-btn hidden" type="button">
+        <i data-lucide="pencil"></i> Edit assignment
+      </button>
     </div>
   </div>
 
@@ -397,6 +560,10 @@
           <option value="Headset">Headset</option>
         </select>
       </div>
+      <div class="field" id="assignmentNotesField">
+        <label for="assignmentNotes">Notes <span class="field-optional">(optional)</span></label>
+        <input type="text" id="assignmentNotes" placeholder="e.g. left earpiece crackles">
+      </div>
       <div class="field hidden" id="assignmentStatusField">
         <label for="assignmentHeadsetStatus">Headset Status <span class="required-star">*</span></label>
         <select id="assignmentHeadsetStatus">
@@ -413,9 +580,18 @@
     </div>
   </div>
 
+  <!-- Reference Photo Viewer -->
+  <div id="photoViewer" class="photo-viewer hidden" role="dialog" aria-modal="true" aria-labelledby="photoViewerCaption">
+    <button type="button" id="photoViewerCloseBtn" class="scanner-exit photo-viewer-close">
+      <i data-lucide="x"></i> Close
+    </button>
+    <img id="photoViewerImage" alt="">
+    <p id="photoViewerCaption" class="photo-viewer-caption"></p>
+  </div>
+
   <footer>All Rights Reserved &copy; Xaris.tech</footer>
 
   <script>lucide.createIcons()</script>
-  <script src="js/comms-checklist.js?v=2"></script>
+  <script src="js/comms-checklist.js?v=7"></script>
 </body>
 </html>
