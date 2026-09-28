@@ -147,7 +147,9 @@ function showAlreadyScannedNotice(scan) {
     const detail = isBeltpack ? current.monitor_type : current.status
     setScannerEditTarget(assignment)
     setScannerMessage(
-      `${assignment.id} ${isBeltpack ? 'Beltpack' : 'Headset'} already assigned to ${current.user.trim()}${detail ? ` (${detail})` : ''}`,
+      isBeltpack && current.monitor_type === 'N/A'
+        ? `${assignment.id} Beltpack already marked N/A (not used)`
+        : `${assignment.id} ${isBeltpack ? 'Beltpack' : 'Headset'} already assigned to ${current.user.trim()}${detail ? ` (${detail})` : ''}`,
       'warning'
     )
   }
@@ -287,8 +289,9 @@ function navigateScanHistory(direction) {
 
 function showAssignmentPrompt(assignment) {
   if (assignment.kind === 'headset' && CommsAssignment.isHeadsetDisabled(beltpackAssignments[assignment.id])) {
-    setError(`${assignment.id} Headset is not used because ${assignment.id} Beltpack is assigned to In-ear.`)
-    setScannerMessage(`${assignment.id} Headset is disabled because its beltpack uses In-ear.`, 'error')
+    const reason = CommsAssignment.headsetDisabledReason(assignment.id, beltpackAssignments[assignment.id])
+    setError(`${assignment.id} Headset is not used because ${reason}.`)
+    setScannerMessage(`${assignment.id} Headset is disabled: ${reason}.`, 'error')
     return false
   }
 
@@ -302,6 +305,7 @@ function showAssignmentPrompt(assignment) {
     : 'Enter the assigned name and headset status.'
   document.getElementById('assignmentName').value = current?.user || ''
   document.getElementById('assignmentMonitorType').value = current?.monitor_type || ''
+  syncAssignmentNameField()
   document.getElementById('assignmentNotes').value = isBeltpack ? current?.notes || '' : ''
   document.getElementById('assignmentNotesField').classList.toggle('hidden', !isBeltpack)
   document.getElementById('assignmentHeadsetStatus').value = current?.status || 'Working'
@@ -320,6 +324,13 @@ function closeAssignmentPrompt() {
   scanNotice = { ...scanNotice, seenAt: Date.now() }
   setScannerMessage('Assignment cancelled. Ready for the next QR.')
   resumeScanner(300)
+}
+
+// A beltpack marked N/A needs no assigned name.
+function syncAssignmentNameField() {
+  const unused = pendingAssignment?.kind === 'beltpack' && document.getElementById('assignmentMonitorType').value === 'N/A'
+  document.getElementById('assignmentNameField').classList.toggle('hidden', unused)
+  if (unused) document.getElementById('assignmentName').value = ''
 }
 
 function confirmAssignmentPrompt() {
@@ -349,7 +360,7 @@ function confirmAssignmentPrompt() {
     pendingAssignment = null
     pendingScanEntry = null
     document.getElementById('assignmentOverlay').classList.add('hidden')
-  scanNotice = { ...scanNotice, seenAt: Date.now() }
+    scanNotice = { ...scanNotice, seenAt: Date.now() }
     if (completedScan) recordCompletedScan(completedScan)
     saveDraft()
     setScannerMessage('Assignment saved. Ready for the next QR.')
@@ -570,9 +581,12 @@ function buildBeltpacks() {
         <option value="">Monitor type</option>
         <option value="In-ear">In-ear</option>
         <option value="Headset">Headset</option>
+        <option value="N/A">N/A (not used)</option>
       </select>
       <input type="text" id="beltpack-notes-${id}" class="beltpack-notes" placeholder="Notes (optional)" aria-label="${id} beltpack notes">
+      <span class="beltpack-unused-note">Not used today.</span>
     `
+    div.id = `beltpack-row-${id}`
     container.appendChild(div)
   })
 
@@ -595,6 +609,17 @@ function buildBeltpacks() {
   })
 }
 
+// An N/A beltpack clears and hides its name and notes; its headset is blocked too.
+function syncBeltpackUsage(id) {
+  const unused = CommsAssignment.isBeltpackUnused(beltpackAssignments[id])
+  document.getElementById(`beltpack-row-${id}`).classList.toggle('is-unused', unused)
+  if (unused) {
+    document.getElementById(`beltpack-${id}`).value = ''
+    document.getElementById(`beltpack-notes-${id}`).value = ''
+    beltpackAssignments[id] = { user: '', monitor_type: 'N/A', notes: '' }
+  }
+}
+
 function buildHeadsets() {
   const container = document.getElementById('headsetContainer')
   BELTPACK_IDS.forEach(id => {
@@ -612,7 +637,7 @@ function buildHeadsets() {
           <option value="N/A">N/A</option>
         </select>
         <input type="text" id="headset-notes-${id}" placeholder="Notes (optional)">
-        <span class="headset-disabled-note">Not used — paired beltpack is set to In-ear.</span>
+        <span class="headset-disabled-note" id="headset-disabled-note-${id}"></span>
       </div>
     `
     container.appendChild(div)
@@ -620,8 +645,12 @@ function buildHeadsets() {
 }
 
 function syncHeadsetAvailability(id) {
+  syncBeltpackUsage(id)
   const item = document.getElementById(`headset-${id}`)
   const disabled = CommsAssignment.isHeadsetDisabled(beltpackAssignments[id])
+  document.getElementById(`headset-disabled-note-${id}`).textContent = disabled
+    ? `Not used — ${CommsAssignment.headsetDisabledReason(id, beltpackAssignments[id])}.`
+    : ''
   item.classList.toggle('is-disabled', disabled)
   item.querySelectorAll('input, select').forEach(control => { control.disabled = disabled })
 
@@ -914,6 +943,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('countInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') confirmCountPrompt()
   })
+  document.getElementById('assignmentMonitorType').addEventListener('change', syncAssignmentNameField)
   document.getElementById('assignmentName').addEventListener('keydown', e => {
     if (e.key === 'Enter') confirmAssignmentPrompt()
   })

@@ -5,7 +5,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   const FORM_STATE_VERSION = 1
   const ITEM_STATUSES = new Set(['Complete', 'Incomplete', 'N/A'])
-  const MONITOR_TYPES = new Set(['', 'In-ear', 'Headset'])
+  const MONITOR_TYPES = new Set(['', 'In-ear', 'Headset', 'N/A'])
   const HEADSET_STATUSES = new Set(['Working', 'Needs Repair', 'Needs Replacement', 'N/A'])
   const MAX_COUNT = 999
 
@@ -105,7 +105,7 @@
       }
 
       const headset = isObject(headsets[id]) ? headsets[id] : {}
-      state.headsets[id] = state.beltpacks[id].monitor_type === 'In-ear'
+      state.headsets[id] = ['In-ear', 'N/A'].includes(state.beltpacks[id].monitor_type)
         ? { user: '', status: 'N/A', notes: '' }
         : {
           user: text(headset.user),

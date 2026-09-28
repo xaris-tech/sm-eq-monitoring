@@ -125,3 +125,25 @@ test('API report rows accept legacy and structured assignments', () => {
   assert.deepEqual(row('SM1 Headset').slice(6, 10), ['', '', 'Working', 'old format'])
   assert.deepEqual(row('SM2 Headset').slice(6, 10), ['Ana', '', 'Needs Repair', ''])
 })
+
+test('an N/A beltpack needs no name and blocks its paired headset', () => {
+  const { isBeltpackUnused, headsetDisabledReason } = require('../js/comms-assignment')
+
+  assert.deepEqual(createBeltpackAssignment('', 'N/A'), { user: '', monitor_type: 'N/A', notes: '' })
+  assert.deepEqual(createBeltpackAssignment('Juan', 'N/A').user, '', 'a name typed before choosing N/A is dropped')
+  assert.equal(isBeltpackUnused({ monitor_type: 'N/A' }), true)
+  assert.equal(isHeadsetDisabled({ user: '', monitor_type: 'N/A' }), true)
+  assert.equal(headsetDisabledReason('SM4', { monitor_type: 'N/A' }), 'SM4 Beltpack is N/A')
+  assert.equal(headsetDisabledReason('SM4', { monitor_type: 'In-ear' }), 'SM4 Beltpack uses In-ear')
+})
+
+test('the beltpack row and popup offer N/A (not used)', () => {
+  const root = path.resolve(__dirname, '..')
+  const html = fs.readFileSync(path.join(root, 'comms-checklist.html'), 'utf8')
+  const script = fs.readFileSync(path.join(root, 'js/comms-checklist.js'), 'utf8')
+
+  assert.match(script, /<option value="N\/A">N\/A \(not used\)<\/option>/)
+  assert.match(html, /id="assignmentMonitorType">[\s\S]*?<option value="N\/A">/)
+  assert.match(html, /id="assignmentNameField"/)
+  assert.match(script, /function syncBeltpackUsage\(id\)/)
+})

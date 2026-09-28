@@ -11,6 +11,8 @@ const COMMS_ITEM_IDS = ['COMMS-BASE-01', 'COMMS-ANTENNA-01', 'COMMS-CABLE-01', '
 const BELTPACK_KEYS = ['SM1', 'SM2', 'SM3', 'SM4', 'SM5', 'SM6', 'SM7', 'SM8']
 const TIME_ZONE = 'Asia/Manila'
 const IN_EAR_HEADSET_NOTE = 'Not used — In-ear'
+const UNUSED_BELTPACK_NOTE = 'Not used'
+const UNUSED_HEADSET_NOTE = 'Not used — beltpack N/A'
 const ISSUE_HEADSET_STATUSES = new Set(['Needs Repair', 'Needs Replacement'])
 
 function clean(value) {
@@ -111,6 +113,11 @@ function buildReportRows(payload, submissionNo, now = new Date()) {
     const beltpack = readBeltpack(beltpacks[key])
     const user = beltpack.user === 'N/A' ? '' : beltpack.user
     const inEar = beltpack.monitorType === 'In-ear'
+    if (beltpack.monitorType === 'N/A') {
+      beltpackRows.push(detail('Beltpack', `${key} Beltpack`, '', '', 'N/A', UNUSED_BELTPACK_NOTE))
+      headsetRows.push(detail('Headset', `${key} Headset`, '', '', 'N/A', UNUSED_HEADSET_NOTE))
+      return
+    }
     if (beltpack.notes) issues.push(issueText(`${key} ${inEar ? 'In-ear' : 'Beltpack'}`, '', beltpack.notes))
     beltpackRows.push(detail('Beltpack', `${key} Beltpack`, user, beltpack.monitorType, '', beltpack.notes))
 

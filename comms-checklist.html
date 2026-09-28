@@ -11,9 +11,9 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="js/config.js?v=6"></script>
   <script src="js/api.js?v=2"></script>
-  <script src="js/comms-assignment.js?v=2"></script>
-  <script src="js/comms-scanner-state.js?v=2"></script>
-  <script src="js/comms-form-state.js?v=2"></script>
+  <script src="js/comms-assignment.js?v=3"></script>
+  <script src="js/comms-scanner-state.js?v=3"></script>
+  <script src="js/comms-form-state.js?v=3"></script>
   <script src="js/comms-draft.js?v=1"></script>
   <style>
     .ref-thumb {
@@ -294,6 +294,27 @@
       width: 100%;
     }
 
+    .beltpack-unused-note {
+      display: none;
+      grid-column: 2 / -1;
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .beltpack-field.is-unused {
+      background: var(--border-light);
+      border-color: var(--border);
+    }
+
+    .beltpack-field.is-unused input {
+      display: none;
+    }
+
+    .beltpack-field.is-unused .beltpack-unused-note {
+      display: block;
+    }
+
     .beltpack-field .beltpack-notes {
       grid-column: 2 / -1;
     }
@@ -559,7 +580,7 @@
       <h2 id="assignmentTitle">Assign equipment</h2>
       <p id="assignmentDescription"></p>
       <div id="assignmentError" class="error-msg" role="alert"></div>
-      <div class="field">
+      <div class="field" id="assignmentNameField">
         <label for="assignmentName">Assigned Name <span class="required-star">*</span></label>
         <input type="text" id="assignmentName" autocomplete="name" placeholder="e.g. Juan Dela Cruz">
       </div>
@@ -569,6 +590,7 @@
           <option value="">-- Select type --</option>
           <option value="In-ear">In-ear</option>
           <option value="Headset">Headset</option>
+          <option value="N/A">N/A (not used)</option>
         </select>
       </div>
       <div class="field" id="assignmentNotesField">
@@ -620,6 +642,6 @@
   <footer>All Rights Reserved &copy; Xaris.tech</footer>
 
   <script>lucide.createIcons()</script>
-  <script src="js/comms-checklist.js?v=9"></script>
+  <script src="js/comms-checklist.js?v=10"></script>
 </body>
 </html>

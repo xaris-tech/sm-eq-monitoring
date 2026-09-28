@@ -135,3 +135,13 @@ test('scanning the beltpack battery asks how many are present', () => {
   const handleScanBody = script.match(/function handleScan\(decodedText\) \{([\s\S]*?)\n\}/)?.[1] ?? ''
   assert.match(handleScanBody, /item\.expected_count[\s\S]*showCountPrompt\(item\)/)
 })
+
+test('an N/A beltpack restores with its headset forced to N/A', () => {
+  const state = normalizeFormState({
+    beltpacks: { SM1: { user: '', monitor_type: 'N/A' } },
+    headsets: { SM1: { user: 'Leo', status: 'Working', notes: 'x' } },
+  }, ITEM_IDS, BELTPACK_IDS)
+
+  assert.equal(state.beltpacks.SM1.monitor_type, 'N/A')
+  assert.deepEqual(state.headsets.SM1, { user: '', status: 'N/A', notes: '' })
+})

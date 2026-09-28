@@ -178,3 +178,11 @@ test('re-scans show an already-scanned notice with an Edit action', () => {
   assert.match(script, /already scanned/)
   assert.match(script, /already assigned to/)
 })
+
+test('an N/A beltpack is already handled and blocks its headset scan', () => {
+  const state = scanFormState()
+  state.beltpacks.SM3 = { user: '', monitor_type: 'N/A', notes: '' }
+
+  assert.equal(classifyScan('BELTPACK:SM3', state).kind, 'already-assigned')
+  assert.equal(classifyScan('HEADSET:SM3', state).kind, 'blocked')
+})

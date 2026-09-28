@@ -150,3 +150,15 @@ test('counted items record their count in the notes and summary', () => {
   assert.equal(detailRows.find(r => r[5] === 'Beltpack Battery')[9], 'Count: 12 of 16 — two left charging')
   assert.equal(logRow[7], 'Beltpack Battery: Incomplete, Count: 12 of 16 — two left charging')
 })
+
+test('N/A beltpacks and their headsets are recorded as not used, not as issues', () => {
+  const p = payload()
+  p.beltpacks.SM6 = { user: 'N/A', monitor_type: 'N/A', notes: '' }
+  p.headsets.SM6 = { user: '', status: 'Needs Repair', notes: 'stale' }
+
+  const { logRow, detailRows } = buildReportRows(p, 1)
+
+  assert.deepEqual(detailRows.find(r => r[5] === 'SM6 Beltpack').slice(6), ['', '', 'N/A', 'Not used'])
+  assert.deepEqual(detailRows.find(r => r[5] === 'SM6 Headset').slice(6), ['', '', 'N/A', 'Not used — beltpack N/A'])
+  assert.equal(logRow[6], 0)
+})

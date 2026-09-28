@@ -15,7 +15,7 @@
     if (assignment) {
       const beltpack = formState.beltpacks[assignment.id]
       if (assignment.kind === 'beltpack') {
-        return beltpack.user.trim()
+        return beltpack.user.trim() || beltpack.monitor_type === 'N/A'
           ? { kind: 'already-assigned', value: value.toUpperCase(), assignment, current: beltpack }
           : { kind: 'assign', value: value.toUpperCase(), assignment }
       }
