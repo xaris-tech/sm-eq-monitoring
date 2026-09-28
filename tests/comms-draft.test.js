@@ -19,7 +19,7 @@ const NOW = Date.UTC(2026, 8, 28, 1, 0, 0)
 function filledState() {
   const state = createEmptyFormState(ITEM_IDS, BELTPACK_IDS)
   state.name = 'Juan'
-  state.items['COMMS-BASE-01'] = { status: 'Complete', notes: 'knob loose' }
+  state.items['COMMS-BASE-01'] = { status: 'Complete', notes: 'knob loose', count: null }
   state.beltpacks.SM2 = { user: 'Ana', monitor_type: 'In-ear', notes: '' }
   state.headsets.SM2 = { user: '', status: 'N/A', notes: '' }
   return state

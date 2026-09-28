@@ -12,6 +12,8 @@ let scanNotice = CommsScannerState.createNoticeState()
 let scannerEditTarget = null
 
 const beltpackAssignments = {}
+const itemCounts = {}
+let pendingCountItem = null
 const headsetAssignments = {}
 
 function escapeHtml(str) {
@@ -111,6 +113,12 @@ function handleScan(decodedText) {
   }
 
   pauseScanner()
+  if (item.expected_count) {
+    pendingScanEntry = { value: item.item_id, label: item.item_name }
+    showCountPrompt(item)
+    playScanSuccessFeedback()
+    return
+  }
   const completeBtn = document.querySelector(`#checklist-${item.item_id} .status-btn[data-value="Complete"]`)
   if (completeBtn) {
     completeBtn.click()
@@ -124,8 +132,15 @@ function handleScan(decodedText) {
 
 function showAlreadyScannedNotice(scan) {
   if (scan.kind === 'already-complete') {
-    setScannerEditTarget(null)
-    setScannerMessage(`✓ ${findCommsItem(scan.itemId).item_name} already scanned`, 'warning')
+    const item = findCommsItem(scan.itemId)
+    const count = itemCounts[item.item_id]
+    if (item.expected_count) {
+      setScannerEditTarget({ kind: 'count', itemId: item.item_id })
+      setScannerMessage(`✓ ${item.item_name} already counted${count != null ? `: ${count} of ${item.expected_count}` : ''}`, 'warning')
+    } else {
+      setScannerEditTarget(null)
+      setScannerMessage(`✓ ${item.item_name} already scanned`, 'warning')
+    }
   } else {
     const { assignment, current } = scan
     const isBeltpack = assignment.kind === 'beltpack'
@@ -156,7 +171,11 @@ function editScannedAssignment() {
   scanProcessing = true
   // Editing an existing assignment is not a new scan, so it adds no history entry.
   pendingScanEntry = null
-  if (!showAssignmentPrompt(assignment)) resumeScanner(900)
+  if (assignment.kind === 'count') {
+    showCountPrompt(findCommsItem(assignment.itemId))
+  } else if (!showAssignmentPrompt(assignment)) {
+    resumeScanner(900)
+  }
 }
 
 function playScanSuccessFeedback() {
@@ -342,6 +361,62 @@ function confirmAssignmentPrompt() {
   }
 }
 
+function renderItemCount(id) {
+  const el = document.getElementById(`count-${id}`)
+  if (!el) return
+  const count = itemCounts[id]
+  const expected = findCommsItem(id).expected_count
+  el.textContent = count == null ? '' : `Counted: ${count} of ${expected}`
+  el.classList.toggle('is-short', count != null && count < expected)
+}
+
+function showCountPrompt(item) {
+  pendingCountItem = item
+  const current = itemCounts[item.item_id]
+  document.getElementById('countTitle').textContent = item.item_name
+  document.getElementById('countQuestion').textContent = `How many ${item.count_noun || item.item_name} are there? Expected: ${item.expected_count}.`
+  document.getElementById('countInput').value = current ?? item.expected_count
+  document.getElementById('countError').classList.remove('visible')
+  document.getElementById('countOverlay').classList.remove('hidden')
+  document.getElementById('countInput').focus()
+  document.getElementById('countInput').select()
+}
+
+function closeCountPrompt(message) {
+  pendingCountItem = null
+  pendingScanEntry = null
+  document.getElementById('countOverlay').classList.add('hidden')
+  scanNotice = { ...scanNotice, seenAt: Date.now() }
+  setScannerMessage(message)
+  resumeScanner(300)
+}
+
+function confirmCountPrompt() {
+  const item = pendingCountItem
+  if (!item) return
+  const raw = document.getElementById('countInput').value.trim()
+  const count = CommsFormState.normalizeCount(/^\d+$/.test(raw) ? Number(raw) : NaN)
+  if (count == null) {
+    const error = document.getElementById('countError')
+    error.textContent = `Enter a whole number from 0 to ${CommsFormState.MAX_COUNT}.`
+    error.classList.add('visible')
+    return
+  }
+
+  itemCounts[item.item_id] = count
+  const status = CommsFormState.statusForCount(count, item.expected_count)
+  setItemStatus(item.item_id, status)
+  renderItemCount(item.item_id)
+  const completedScan = pendingScanEntry
+  pendingScanEntry = null
+  if (completedScan) recordCompletedScan(completedScan)
+  saveDraft()
+  setError(null)
+  closeCountPrompt(status === 'Complete'
+    ? `${item.item_name}: all ${count} counted. Ready for the next QR.`
+    : `${item.item_name}: ${count} of ${item.expected_count}, marked Incomplete. Ready for the next QR.`)
+}
+
 function startClock(id) {
   function tick() {
     const now = new Date()
@@ -450,6 +525,7 @@ function buildChecklist() {
         <div class="checklist-item-info">
           <div class="checklist-item-name">${escapeHtml(item.item_name)}</div>
           <div class="checklist-item-spec">${escapeHtml(item.spec)}</div>
+          ${item.expected_count ? `<div class="checklist-item-count" id="count-${item.item_id}"></div>` : ''}
         </div>
         <div class="status-group">
           <button class="status-btn" data-id="${item.item_id}" data-value="Complete">Complete</button>
@@ -573,6 +649,7 @@ function captureFormState() {
     state.items[id] = {
       status: checklistState[id] || 'Incomplete',
       notes: document.querySelector(`#notes-${id} input`).value,
+      count: itemCounts[id] ?? null,
     }
   })
   BELTPACK_IDS.forEach(id => {
@@ -605,6 +682,8 @@ function applyFormState(state) {
     const item = next.items[id]
     document.querySelector(`#notes-${id} input`).value = item.notes
     setItemStatus(id, item.status)
+    itemCounts[id] = item.count
+    renderItemCount(id)
   })
 
   BELTPACK_IDS.forEach(id => {
@@ -645,6 +724,7 @@ function collectPayload() {
     item_name: item.item_name,
     status: checklistState[item.item_id] || 'Incomplete',
     notes: document.querySelector(`#notes-${item.item_id} input`)?.value?.trim() || '',
+    ...(item.expected_count ? { count: itemCounts[item.item_id] ?? null, expected_count: item.expected_count } : {}),
   }))
 
   const beltpacks = {}
@@ -829,6 +909,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('scannerEditBtn').addEventListener('click', editScannedAssignment)
   document.getElementById('assignmentCancelBtn').addEventListener('click', closeAssignmentPrompt)
   document.getElementById('assignmentConfirmBtn').addEventListener('click', confirmAssignmentPrompt)
+  document.getElementById('countCancelBtn').addEventListener('click', () => closeCountPrompt('Count cancelled. Ready for the next QR.'))
+  document.getElementById('countConfirmBtn').addEventListener('click', confirmCountPrompt)
+  document.getElementById('countInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmCountPrompt()
+  })
   document.getElementById('assignmentName').addEventListener('keydown', e => {
     if (e.key === 'Enter') confirmAssignmentPrompt()
   })

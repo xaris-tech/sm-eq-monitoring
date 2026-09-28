@@ -68,6 +68,11 @@ function readHeadset(value) {
   return { user: clean(headset.user), status: clean(headset.status) || 'Working', notes: clean(headset.notes) }
 }
 
+function countText(item) {
+  if (!Number.isInteger(item.count)) return ''
+  return Number.isInteger(item.expected_count) ? `Count: ${item.count} of ${item.expected_count}` : `Count: ${item.count}`
+}
+
 function issueText(label, status, notes) {
   return `${label}: ${[status, notes].filter(Boolean).join(' — ')}`
 }
@@ -90,9 +95,12 @@ function buildReportRows(payload, submissionNo, now = new Date()) {
     const name = clean(item.item_name) || id
     const status = clean(item.status) || 'Incomplete'
     const notes = clean(item.notes)
+    const count = countText(item)
     if (status === 'Complete') complete++
-    if (status === 'Incomplete' || notes) issues.push(issueText(name, status === 'Incomplete' ? status : '', notes))
-    detailRows.push(detail('Comms Item', name, '', '', status, notes))
+    if (status === 'Incomplete' || notes) {
+      issues.push(issueText(name, status === 'Incomplete' ? [status, count].filter(Boolean).join(', ') : '', notes))
+    }
+    detailRows.push(detail('Comms Item', name, '', '', status, [count, notes].filter(Boolean).join(' — ')))
   })
 
   const beltpacks = payload.beltpacks || {}

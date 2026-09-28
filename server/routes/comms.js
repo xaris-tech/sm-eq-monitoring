@@ -94,7 +94,14 @@ router.post('/checklist', async (req, res, next) => {
 // GET /api/comms/checklists
 router.get('/checklists', async (req, res, next) => {
   try {
-    const rows = await getRows(`'${LOG_SHEET}'!A:H`)
+    let rows
+    try {
+      rows = await getRows(`'${LOG_SHEET}'!A:H`)
+    } catch (err) {
+      // The Log tab is created by the first submission; until then there is no history.
+      if (/Unable to parse range/i.test(err.message)) return res.json({ checklists: [] })
+      throw err
+    }
     if (rows.length < 2) return res.json({ checklists: [] })
 
     const checklists = rows.slice(1).filter(r => r[0]).map(r => ({

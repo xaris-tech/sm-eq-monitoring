@@ -135,3 +135,18 @@ test('submission numbers continue from the last log row', () => {
   assert.equal(formatSubmissionNo(1), 'CL-0001')
   assert.equal(formatSubmissionNo(12345), 'CL-12345')
 })
+
+test('counted items record their count in the notes and summary', () => {
+  const p = payload()
+  const battery = p.items.find(i => i.item_id === 'COMMS-BATT-01')
+
+  Object.assign(battery, { status: 'Complete', count: 16, expected_count: 16 })
+  let { logRow, detailRows } = buildReportRows(p, 1)
+  assert.equal(detailRows.find(r => r[5] === 'Beltpack Battery')[9], 'Count: 16 of 16')
+  assert.equal(logRow[6], 0, 'a full count is not an issue')
+
+  Object.assign(battery, { status: 'Incomplete', count: 12, notes: 'two left charging' })
+  ;({ logRow, detailRows } = buildReportRows(p, 2))
+  assert.equal(detailRows.find(r => r[5] === 'Beltpack Battery')[9], 'Count: 12 of 16 — two left charging')
+  assert.equal(logRow[7], 'Beltpack Battery: Incomplete, Count: 12 of 16 — two left charging')
+})

@@ -7,6 +7,7 @@
   const ITEM_STATUSES = new Set(['Complete', 'Incomplete', 'N/A'])
   const MONITOR_TYPES = new Set(['', 'In-ear', 'Headset'])
   const HEADSET_STATUSES = new Set(['Working', 'Needs Repair', 'Needs Replacement', 'N/A'])
+  const MAX_COUNT = 999
 
   function text(value) {
     return typeof value === 'string' ? value : ''
@@ -20,9 +21,19 @@
     return !!value && typeof value === 'object' && !Array.isArray(value)
   }
 
+  // A counted quantity is a whole number from 0 to MAX_COUNT, or null when not counted.
+  function normalizeCount(value) {
+    return Number.isInteger(value) && value >= 0 && value <= MAX_COUNT ? value : null
+  }
+
+  // Counted items are Complete only when every expected unit is present.
+  function statusForCount(count, expected) {
+    return count >= expected ? 'Complete' : 'Incomplete'
+  }
+
   function createEmptyFormState(itemIds, beltpackIds) {
     const items = {}
-    itemIds.forEach(id => { items[id] = { status: 'Incomplete', notes: '' } })
+    itemIds.forEach(id => { items[id] = { status: 'Incomplete', notes: '', count: null } })
 
     const beltpacks = {}
     const headsets = {}
@@ -79,6 +90,7 @@
       state.items[id] = {
         status: pick(item.status, ITEM_STATUSES, 'Incomplete'),
         notes: text(item.notes),
+        count: normalizeCount(item.count),
       }
     })
 
@@ -106,5 +118,5 @@
     return state
   }
 
-  return { FORM_STATE_VERSION, createEmptyFormState, normalizeFormState }
+  return { FORM_STATE_VERSION, MAX_COUNT, createEmptyFormState, normalizeFormState, normalizeCount, statusForCount }
 })

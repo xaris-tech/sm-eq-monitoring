@@ -12,7 +12,7 @@ test('empty form state matches a fresh checklist', () => {
   const state = createEmptyFormState(ITEM_IDS, BELTPACK_IDS)
 
   assert.equal(state.name, '')
-  assert.deepEqual(state.items['COMMS-BASE-01'], { status: 'Incomplete', notes: '' })
+  assert.deepEqual(state.items['COMMS-BASE-01'], { status: 'Incomplete', notes: '', count: null })
   assert.deepEqual(state.beltpacks.SM1, { user: '', monitor_type: '', notes: '' })
   assert.deepEqual(state.headsets.SM2, { user: '', status: 'Working', notes: '' })
   assert.deepEqual(state.scanHistory.entries, [])
@@ -24,8 +24,8 @@ test('a valid snapshot round-trips unchanged', () => {
   snapshot.name = 'Juan'
   snapshot.event = 'Others'
   snapshot.eventOther = 'Christmas Program'
-  snapshot.items['COMMS-BASE-01'] = { status: 'Complete', notes: 'loose knob' }
-  snapshot.items['COMMS-ANTENNA-01'] = { status: 'N/A', notes: '' }
+  snapshot.items['COMMS-BASE-01'] = { status: 'Complete', notes: 'loose knob', count: null }
+  snapshot.items['COMMS-ANTENNA-01'] = { status: 'N/A', notes: '', count: 12 }
   snapshot.beltpacks.SM1 = { user: 'Maria', monitor_type: 'Headset', notes: '' }
   snapshot.headsets.SM1 = { user: 'Maria', status: 'Needs Repair', notes: 'cracked band' }
   snapshot.scanHistory = {
@@ -70,7 +70,7 @@ test('missing, unknown, and invalid fields fall back to the empty form', () => {
   assert.equal(state.name, '')
   assert.equal(state.eventOther, '')
   assert.equal(state.injected, undefined)
-  assert.deepEqual(state.items['COMMS-BASE-01'], { status: 'Incomplete', notes: '' })
+  assert.deepEqual(state.items['COMMS-BASE-01'], { status: 'Incomplete', notes: '', count: null })
   assert.equal(state.items['COMMS-UNKNOWN-01'], undefined)
   assert.deepEqual(state.beltpacks.SM1, { user: 'Leo', monitor_type: '', notes: '' })
   assert.equal(state.beltpacks.SM9, undefined)
@@ -106,4 +106,32 @@ test('the checklist page captures and applies form state through one seam', () =
   assert.match(script, /function captureFormState\(\)/)
   assert.match(script, /function applyFormState\(state\)/)
   assert.match(script, /function resetForm\(\) \{[\s\S]*?applyFormState\(/)
+})
+
+test('counted quantities are whole numbers from 0 to 999, otherwise not counted', () => {
+  const { normalizeCount, statusForCount } = require('../js/comms-form-state')
+
+  for (const valid of [0, 8, 16, 999]) assert.equal(normalizeCount(valid), valid)
+  for (const invalid of [-1, 1000, 2.5, '16', NaN, null, undefined]) assert.equal(normalizeCount(invalid), null, String(invalid))
+
+  assert.equal(statusForCount(16, 16), 'Complete')
+  assert.equal(statusForCount(17, 16), 'Complete')
+  assert.equal(statusForCount(15, 16), 'Incomplete')
+  assert.equal(statusForCount(0, 16), 'Incomplete')
+
+  const state = normalizeFormState({ items: { 'COMMS-BASE-01': { status: 'Incomplete', count: '12' } } }, ITEM_IDS, BELTPACK_IDS)
+  assert.equal(state.items['COMMS-BASE-01'].count, null)
+})
+
+test('scanning the beltpack battery asks how many are present', () => {
+  const root = path.resolve(__dirname, '..')
+  const html = fs.readFileSync(path.join(root, 'comms-checklist.html'), 'utf8')
+  const script = fs.readFileSync(path.join(root, 'js/comms-checklist.js'), 'utf8')
+  const config = fs.readFileSync(path.join(root, 'js/config.js'), 'utf8')
+
+  assert.match(config, /item_id: 'COMMS-BATT-01'[^}]*expected_count: 16/)
+  assert.match(html, /id="countOverlay"/)
+  assert.match(html, /id="countInput"[^>]*inputmode="numeric"/)
+  const handleScanBody = script.match(/function handleScan\(decodedText\) \{([\s\S]*?)\n\}/)?.[1] ?? ''
+  assert.match(handleScanBody, /item\.expected_count[\s\S]*showCountPrompt\(item\)/)
 })

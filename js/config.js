@@ -20,7 +20,8 @@ const COMMS_ITEMS = [
   { item_id: 'COMMS-CABLE-01', item_name: 'Cable', spec: '1 pc' },
   { item_id: 'COMMS-POE-01', item_name: 'POE Adapter', spec: '1 pc' },
   { item_id: 'COMMS-KNOB-01', item_name: 'Pet Knob with Tripod Adapter', spec: '1 Knob, 1 Adapter' },
-  { item_id: 'COMMS-BATT-01', item_name: 'Beltpack Battery', spec: '16 pcs (8 spares)' },
+  // expected_count: scanning this item asks how many are present (count_noun is the plural used in the question).
+  { item_id: 'COMMS-BATT-01', item_name: 'Beltpack Battery', spec: '16 pcs (8 spares)', expected_count: 16, count_noun: 'beltpack batteries' },
   { item_id: 'COMMS-CHARGER-01', item_name: 'Charging Base', spec: '1 pc' },
   { item_id: 'COMMS-XLR-01', item_name: '4-Pin XLR Adapter', spec: '1 pc' },
   { item_id: 'COMMS-CASE-01', item_name: 'M1 Hard Case', spec: '1 pc' },
