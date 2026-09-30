@@ -13,7 +13,7 @@
   <script src="js/api.js?v=2"></script>
   <script src="js/comms-assignment.js?v=3"></script>
   <script src="js/comms-scanner-state.js?v=3"></script>
-  <script src="js/comms-form-state.js?v=3"></script>
+  <script src="js/comms-form-state.js?v=4"></script>
   <script src="js/comms-draft.js?v=1"></script>
   <style>
     .ref-thumb {
@@ -236,6 +236,31 @@
       background: var(--bg);
       border-color: var(--text-muted);
       color: var(--text-muted);
+    }
+
+    .needs-attention {
+      border-color: var(--danger) !important;
+      box-shadow: 0 0 0 2px var(--danger-bg);
+    }
+
+    .missing-list {
+      margin: var(--space-2) 0 0;
+      padding-left: var(--space-5);
+    }
+
+    .missing-list li {
+      margin-bottom: 2px;
+    }
+
+    .missing-link {
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      font-weight: 700;
+      color: inherit;
+      text-decoration: underline;
+      cursor: pointer;
     }
 
     .checklist-item-count {
@@ -642,6 +667,6 @@
   <footer>All Rights Reserved &copy; Xaris.tech</footer>
 
   <script>lucide.createIcons()</script>
-  <script src="js/comms-checklist.js?v=10"></script>
+  <script src="js/comms-checklist.js?v=11"></script>
 </body>
 </html>

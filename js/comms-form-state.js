@@ -118,5 +118,31 @@
     return state
   }
 
-  return { FORM_STATE_VERSION, MAX_COUNT, createEmptyFormState, normalizeFormState, normalizeCount, statusForCount }
+  // Lists what still blocks submission. items is COMMS_ITEMS ({ item_id, item_name }).
+  // Each entry names the card to highlight: { section, id, label, message }.
+  function findMissing(state, items, beltpackIds) {
+    const missing = []
+    items.forEach(({ item_id: id, item_name: name }) => {
+      const item = state.items[id]
+      const handled = item.status === 'Complete' || item.status === 'N/A' ||
+        item.notes.trim() !== '' || item.count !== null
+      if (!handled) missing.push({ section: 'item', id, label: name, message: 'mark Complete or N/A, or add a note saying what is wrong' })
+    })
+    beltpackIds.forEach(id => {
+      const beltpack = state.beltpacks[id]
+      if (!beltpack.monitor_type) {
+        missing.push({ section: 'beltpack', id, label: `${id} Beltpack`, message: 'choose In-ear, Headset, or N/A' })
+      } else if (beltpack.monitor_type !== 'N/A' && !beltpack.user.trim()) {
+        missing.push({ section: 'beltpack', id, label: `${id} Beltpack`, message: 'enter the assigned name' })
+      }
+    })
+    beltpackIds.forEach(id => {
+      if (state.beltpacks[id].monitor_type === 'Headset' && !state.headsets[id].user.trim()) {
+        missing.push({ section: 'headset', id, label: `${id} Headset`, message: 'enter the assigned name' })
+      }
+    })
+    return missing
+  }
+
+  return { FORM_STATE_VERSION, MAX_COUNT, createEmptyFormState, normalizeFormState, normalizeCount, statusForCount, findMissing }
 })

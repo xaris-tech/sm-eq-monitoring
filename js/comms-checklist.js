@@ -741,12 +741,56 @@ function applyFormState(state) {
   renderScanHistory()
 }
 
+const MISSING_TARGETS = {
+  item: id => `checklist-${id}`,
+  beltpack: id => `beltpack-row-${id}`,
+  headset: id => `headset-${id}`,
+}
+
+let showMissingHighlights = false
+
+// Highlights every card that still blocks submission. Returns the missing list.
+function highlightMissing() {
+  const missing = CommsFormState.findMissing(captureFormState(), COMMS_ITEMS, BELTPACK_IDS)
+  document.querySelectorAll('.needs-attention').forEach(el => el.classList.remove('needs-attention'))
+  missing.forEach(m => document.getElementById(MISSING_TARGETS[m.section](m.id))?.classList.add('needs-attention'))
+  return missing
+}
+
+function checkRequiredItems() {
+  const missing = highlightMissing()
+  if (!missing.length) {
+    showMissingHighlights = false
+    return true
+  }
+  showMissingHighlights = true
+
+  const el = document.getElementById('errorMsg')
+  el.innerHTML = `
+    <strong>Can't submit yet — ${missing.length} ${missing.length === 1 ? 'thing needs' : 'things need'} attention:</strong>
+    <ul class="missing-list">
+      ${missing.map(m => `<li><button type="button" class="missing-link" data-target="${MISSING_TARGETS[m.section](m.id)}">${escapeHtml(m.label)}</button>: ${escapeHtml(m.message)}</li>`).join('')}
+    </ul>`
+  el.classList.add('visible')
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  return false
+}
+
+function goToMissing(targetId) {
+  const target = document.getElementById(targetId)
+  if (!target) return
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  target.querySelector('input:not([disabled]), select:not([disabled]), button')?.focus({ preventScroll: true })
+}
+
 function collectPayload() {
   const name = document.getElementById('fullName').value.trim()
   if (!name) { setError('Please enter your full name.'); document.getElementById('fullName').focus(); return null }
 
   const event = document.getElementById('eventSelect').value
   if (!event) { setError('Please select a church event and activity.'); return null }
+
+  if (!checkRequiredItems()) return null
 
   const items = COMMS_ITEMS.map(item => ({
     item_id: item.item_id,
@@ -892,6 +936,8 @@ function startOver() {
 
 function resetForm() {
   applyFormState(CommsFormState.createEmptyFormState(COMMS_ITEMS.map(i => i.item_id), BELTPACK_IDS))
+  showMissingHighlights = false
+  document.querySelectorAll('.needs-attention').forEach(el => el.classList.remove('needs-attention'))
   document.getElementById('draftBar').classList.add('hidden')
   setError(null)
   const btn = document.getElementById('submitBtn')
@@ -918,6 +964,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const formSection = document.getElementById('formSection')
   ;['input', 'change', 'click'].forEach(type => formSection.addEventListener(type, saveDraft))
+  // After a blocked submit, highlights clear as each card is fixed.
+  ;['input', 'change', 'click'].forEach(type => formSection.addEventListener(type, () => {
+    if (showMissingHighlights && !highlightMissing().length) setError(null)
+  }))
+  document.getElementById('errorMsg').addEventListener('click', e => {
+    const link = e.target.closest('.missing-link')
+    if (link) goToMissing(link.dataset.target)
+  })
   window.addEventListener('pagehide', saveDraft)
   document.getElementById('draftStartOverBtn').addEventListener('click', startOver)
 

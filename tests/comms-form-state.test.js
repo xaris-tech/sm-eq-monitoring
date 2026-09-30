@@ -145,3 +145,25 @@ test('an N/A beltpack restores with its headset forced to N/A', () => {
   assert.equal(state.beltpacks.SM1.monitor_type, 'N/A')
   assert.deepEqual(state.headsets.SM1, { user: '', status: 'N/A', notes: '' })
 })
+
+test('submission is blocked until every item and beltpack is dealt with', () => {
+  const { findMissing } = require('../js/comms-form-state')
+  const items = [{ item_id: 'COMMS-BASE-01', item_name: 'Base Station' }, { item_id: 'COMMS-ANTENNA-01', item_name: 'Antenna' }]
+  const state = createEmptyFormState(ITEM_IDS, BELTPACK_IDS)
+  const labels = () => findMissing(state, items, BELTPACK_IDS).map(m => `${m.section}:${m.id}:${m.message.split(' ')[0]}`)
+
+  assert.deepEqual(labels(), ['item:COMMS-BASE-01:mark', 'item:COMMS-ANTENNA-01:mark', 'beltpack:SM1:choose', 'beltpack:SM2:choose'])
+
+  state.items['COMMS-BASE-01'].status = 'Complete'
+  state.items['COMMS-ANTENNA-01'].notes = 'one antenna missing'   // Incomplete with a note is allowed
+  state.beltpacks.SM1 = { user: '', monitor_type: 'Headset', notes: '' }
+  state.beltpacks.SM2 = { user: '', monitor_type: 'N/A', notes: '' }
+  assert.deepEqual(labels(), ['beltpack:SM1:enter', 'headset:SM1:enter'])
+
+  state.beltpacks.SM1.user = 'Juan'
+  state.headsets.SM1.user = 'Juan'
+  assert.deepEqual(labels(), [])
+
+  state.items['COMMS-ANTENNA-01'] = { status: 'Incomplete', notes: '', count: 12 }  // a short count explains itself
+  assert.deepEqual(labels(), [])
+})
